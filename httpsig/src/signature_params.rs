@@ -254,15 +254,19 @@ impl TryFrom<&str> for HttpSignatureParams {
 #[cfg(test)]
 mod tests {
   use super::*;
+  #[cfg(feature = "ed25519-signature")]
   use crate::crypto::SecretKey;
+  #[cfg(feature = "ed25519-signature")]
   const EDDSA_SECRET_KEY: &str = r##"-----BEGIN PRIVATE KEY-----
 MC4CAQAwBQYDK2VwBCIEIDSHAE++q1BP7T8tk+mJtS+hLf81B0o6CFyWgucDFN/C
 -----END PRIVATE KEY-----
 "##;
+  #[cfg(feature = "ed25519-signature")]
   const _EDDSA_PUBLIC_KEY: &str = r##"-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEA1ixMQcxO46PLlgQfYS46ivFd+n0CcDHSKUnuhm3i1O0=
 -----END PUBLIC KEY-----
 "##;
+  #[cfg(feature = "ed25519-signature")]
   const EDDSA_KEY_ID: &str = "gjrE7ACMxgzYfFHgabgf4kLTg1eKIdsJ94AiFTFj1is=";
 
   fn build_covered_components() -> Vec<HttpMessageComponentId> {
@@ -291,6 +295,7 @@ MCowBQYDK2VwAyEA1ixMQcxO46PLlgQfYS46ivFd+n0CcDHSKUnuhm3i1O0=
     assert_eq!(params.covered_components.len(), 7);
   }
 
+  #[cfg(feature = "ed25519-signature")]
   #[test]
   fn test_set_key_info() {
     let mut params = HttpSignatureParams::try_new(&build_covered_components()).unwrap();
@@ -327,6 +332,7 @@ MCowBQYDK2VwAyEA1ixMQcxO46PLlgQfYS46ivFd+n0CcDHSKUnuhm3i1O0=
     assert_eq!(params.covered_components.len(), 7);
   }
 
+  #[cfg(feature = "ed25519-signature")]
   #[test]
   fn test_from_string_signature_params() {
     const SIGPARA: &str = r##";created=1704972031;alg="ed25519";keyid="gjrE7ACMxgzYfFHgabgf4kLTg1eKIdsJ94AiFTFj1is=""##;

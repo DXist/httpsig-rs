@@ -14,7 +14,8 @@ rust-version.workspace = true
 
 [features]
 default = []
-rsa-signature = ["rsa"]
+ed25519-signature = ["dep:ed25519-compact"]
+rsa-signature = ["dep:rsa"]
 
 [dependencies]
 thiserror = { version = "2.0.18" }
@@ -28,17 +29,17 @@ compact_str = "0.9"
 pkcs8 = { version = "0.10.2", default-features = false, features = ["pem"] }
 spki = { version = "0.7.3", default-features = false, features = ["pem"] }
 sec1 = { version = "0.7.3", default-features = false, features = ["der"] }
-ed25519-compact = { version = "2.2.0", default-features = false, features = [
+ed25519-compact = { version = "2.2", default-features = false, features = [
   "random",
-] }
-ecdsa = { version = "0.16.9", default-features = false, features = [
+], optional = true }
+ecdsa = { version = "0.16", default-features = false, features = [
   "arithmetic",
 ] }
-p256 = { version = "0.13.2", default-features = false, features = [
+p256 = { version = "0.13", default-features = false, features = [
   "arithmetic",
   "ecdsa",
 ] }
-p384 = { version = "0.13.1", default-features = false, features = [
+p384 = { version = "0.13", default-features = false, features = [
   "arithmetic",
   "ecdsa",
 ] }

@@ -31,7 +31,7 @@ pub mod prelude {
 }
 
 /* ----------------------------------------------------------------- */
-#[cfg(test)]
+#[cfg(all(test, feature = "ed25519-signature"))]
 mod tests {
   use crate::signature_base::HttpSignatureBaseOperator;
 

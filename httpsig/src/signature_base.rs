@@ -330,7 +330,7 @@ impl HttpSignatureBaseOperator {
   }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ed25519-signature"))]
 mod test {
   use super::*;
   use crate::signature_params::HttpSignatureParams;
