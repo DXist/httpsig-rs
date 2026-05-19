@@ -95,7 +95,6 @@ impl SecretKey {
         let sk = RsaPrivateKey::from_pkcs1_der(bytes).map_err(|e| HttpSigError::ParsePrivateKeyError(e.to_string()))?;
         Ok(Self::RsaPssSha512(pss::SigningKey::<rsa::sha2::Sha512>::new(sk)))
       }
-      _ => Err(HttpSigError::ParsePrivateKeyError("Unsupported algorithm".to_string())),
     }
   }
   /// parse der
@@ -294,7 +293,6 @@ impl PublicKey {
         let pk = RsaPublicKey::from_pkcs1_der(bytes).map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string()))?;
         Ok(Self::RsaPssSha512(pss::VerifyingKey::new(pk)))
       }
-      _ => Err(HttpSigError::ParsePublicKeyError("Unsupported algorithm".to_string())),
     }
   }
 
@@ -353,7 +351,6 @@ impl PublicKey {
           .as_bytes()
           .ok_or(HttpSigError::ParsePublicKeyError("Invalid public key".to_string()))?
       }
-      _ => return Err(HttpSigError::ParsePublicKeyError("Unsupported algorithm".to_string())),
     };
     Self::from_bytes(alg, pk_bytes)
   }
