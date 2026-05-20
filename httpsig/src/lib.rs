@@ -32,7 +32,7 @@ pub mod prelude {
 #[cfg(test)]
 mod tests {
   use super::prelude::*;
-  use base64::{engine::general_purpose, Engine as _};
+  use base64::{Engine as _, engine::general_purpose};
 
   /* ----------------------------------------------------------------- */
   // params from https://datatracker.ietf.org/doc/html/rfc9421#name-signing-a-request-using-ed2

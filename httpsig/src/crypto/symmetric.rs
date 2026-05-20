@@ -3,7 +3,7 @@ use crate::{
   error::{HttpSigError, HttpSigResult},
   trace::*,
 };
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
 

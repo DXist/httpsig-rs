@@ -5,7 +5,7 @@ use crate::{
   trace::*,
   util::has_unique_elements,
 };
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use rand::RngExt;
 use sfv::{FieldType, ListEntry, Parser};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -123,11 +123,7 @@ impl HttpSignatureParams {
 impl std::fmt::Display for HttpSignatureParams {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let joined = self.covered_components.iter().fold("".to_string(), |acc, v| {
-      if acc.is_empty() {
-        v.to_string()
-      } else {
-        format!("{acc} {v}")
-      }
+      if acc.is_empty() { v.to_string() } else { format!("{acc} {v}") }
     });
     let mut s: String = format!("({})", joined);
     if self.created.is_some() {

@@ -2,10 +2,10 @@ use crate::{
   crypto::SigningKey,
   error::{HttpSigError, HttpSigResult},
   message_component::HttpMessageComponent,
-  prelude::{message_component::HttpMessageComponentId, VerifyingKey},
+  prelude::{VerifyingKey, message_component::HttpMessageComponentId},
   signature_params::HttpSignatureParams,
 };
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use indexmap::IndexMap;
 use rustc_hash::FxBuildHasher;
 use sfv::{BareItem, Item, ListEntry, Parser};

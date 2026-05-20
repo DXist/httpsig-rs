@@ -4,22 +4,22 @@ use crate::{
   trace::*,
 };
 use ecdsa::{
-  elliptic_curve::{sec1::ToEncodedPoint, PublicKey as EcPublicKey, SecretKey as EcSecretKey},
+  elliptic_curve::{PublicKey as EcPublicKey, SecretKey as EcSecretKey, sec1::ToEncodedPoint},
   signature::{DigestSigner, DigestVerifier},
 };
 use ed25519_compact::{PublicKey as Ed25519PublicKey, SecretKey as Ed25519SecretKey};
 use p256::NistP256;
 use p384::NistP384;
-use pkcs8::{der::Decode, Document, PrivateKeyInfo};
+use pkcs8::{Document, PrivateKeyInfo, der::Decode};
 use sha2::{Digest, Sha256, Sha384};
 use spki::SubjectPublicKeyInfoRef;
 
 #[cfg(feature = "rsa-signature")]
 use rsa::{
+  RsaPrivateKey, RsaPublicKey,
   pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey, EncodeRsaPublicKey},
   pkcs1v15, pss,
   signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier},
-  RsaPrivateKey, RsaPublicKey,
 };
 
 #[allow(non_upper_case_globals, dead_code)]
@@ -406,7 +406,7 @@ impl super::VerifyingKey for PublicKey {
   /// - For Ed25519 keys, use the raw 32-byte public key.
   /// - For RSA keys, use the DER encoding of the RSAPublicKey structure in PKCS#1 format.
   fn key_id(&self) -> String {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
 
     let bytes = match self {
       Self::EcdsaP256Sha256(vk) => vk.to_encoded_point(true).as_bytes().to_vec(),

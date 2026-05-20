@@ -1,10 +1,10 @@
-use super::{ContentDigestType, CONTENT_DIGEST_HEADER};
+use super::{CONTENT_DIGEST_HEADER, ContentDigestType};
 use crate::error::{HyperDigestError, HyperDigestResult};
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use bytes::Bytes;
 use http::{Request, Response};
 use http_body::Body;
-use http_body_util::{combinators::BoxBody, BodyExt, Full};
+use http_body_util::{BodyExt, Full, combinators::BoxBody};
 use sha2::Digest;
 use std::future::Future;
 use std::str::FromStr;

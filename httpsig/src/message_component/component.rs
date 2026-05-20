@@ -1,7 +1,7 @@
 use super::{
   component_id::HttpMessageComponentId,
   component_name::{DerivedComponentName, HttpMessageComponentName},
-  component_param::{handle_params_key_into, handle_params_sf, HttpMessageComponentParam},
+  component_param::{HttpMessageComponentParam, handle_params_key_into, handle_params_sf},
   component_value::HttpMessageComponentValue,
 };
 use crate::{

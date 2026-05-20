@@ -2,10 +2,10 @@ use crate::error::{HyperSigError, HyperSigResult};
 use http::{HeaderMap, Request, Response};
 use http_body::Body;
 use httpsig::prelude::{
+  AlgorithmName, HttpSignatureBase, HttpSignatureHeaders, HttpSignatureHeadersMap, HttpSignatureParams, SigningKey, VerifyingKey,
   message_component::{
     DerivedComponentName, HttpMessageComponent, HttpMessageComponentId, HttpMessageComponentName, HttpMessageComponentParam,
   },
-  AlgorithmName, HttpSignatureBase, HttpSignatureHeaders, HttpSignatureHeadersMap, HttpSignatureParams, SigningKey, VerifyingKey,
 };
 use indexmap::{IndexMap, IndexSet};
 use std::{future::Future, str::FromStr};
@@ -894,19 +894,17 @@ fn extract_derived_component<B>(
     DerivedComponentName::RequestTarget => match *req_or_res.method()? {
       http::Method::CONNECT => vec![req_or_res.uri()?.authority().map(|s| s.to_string()).unwrap_or("".to_string())],
       http::Method::OPTIONS => vec!["*".to_string()],
-      _ => vec![req_or_res
-        .uri()?
-        .path_and_query()
-        .map(|s| s.to_string())
-        .unwrap_or("".to_string())],
+      _ => vec![
+        req_or_res
+          .uri()?
+          .path_and_query()
+          .map(|s| s.to_string())
+          .unwrap_or("".to_string()),
+      ],
     },
     DerivedComponentName::Path => vec![{
       let p = req_or_res.uri()?.path();
-      if p.is_empty() {
-        "/".to_string()
-      } else {
-        p.to_string()
-      }
+      if p.is_empty() { "/".to_string() } else { p.to_string() }
     }],
     DerivedComponentName::Query => vec![req_or_res.uri()?.query().map(|v| format!("?{v}")).unwrap_or("?".to_string())],
     DerivedComponentName::QueryParam => {

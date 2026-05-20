@@ -3,14 +3,14 @@ members = ["httpsig", "httpsig-hyper"]
 resolver = "2"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 version = "0.0.24"
 authors = ["Jun Kurihara"]
 homepage = "https://github.com/junkurihara/httpsig-rs"
 repository = "https://github.com/junkurihara/httpsig-rs"
 readme = "README.md"
 license = "MIT"
-rust-version = "1.75.0"
+rust-version = "1.85.0"
 categories = [
   "web-programming",
   "cryptography",
