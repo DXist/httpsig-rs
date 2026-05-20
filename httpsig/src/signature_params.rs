@@ -38,9 +38,7 @@ impl HttpSignatureParams {
   pub fn try_new(covered_components: &[HttpMessageComponentId]) -> HttpSigResult<Self> {
     let created = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
     if !has_unique_elements(covered_components.iter()) {
-      return Err(HttpSigError::InvalidSignatureParams(
-        "duplicate covered component ids".to_string(),
-      ));
+      return Err(HttpSigError::InvalidSignatureParams("duplicate covered component ids"));
     }
 
     Ok(Self {
@@ -153,7 +151,7 @@ impl TryFrom<&ListEntry> for HttpSignatureParams {
   /// Convert from ListEntry to HttpSignatureParams
   fn try_from(value: &ListEntry) -> HttpSigResult<Self> {
     if !matches!(value, ListEntry::InnerList(_)) {
-      return Err(HttpSigError::InvalidSignatureParams("Invalid signature params".to_string()));
+      return Err(HttpSigError::InvalidSignatureParams("Invalid signature params"));
     }
     let inner_list_with_params = match value {
       ListEntry::InnerList(v) => v,
@@ -171,9 +169,7 @@ impl TryFrom<&ListEntry> for HttpSignatureParams {
       .collect::<Result<Vec<_>, _>>()?;
 
     if !has_unique_elements(covered_components.iter()) {
-      return Err(HttpSigError::InvalidSignatureParams(
-        "duplicate covered component ids".to_string(),
-      ));
+      return Err(HttpSigError::InvalidSignatureParams("duplicate covered component ids"));
     }
 
     let mut params = Self {
@@ -213,7 +209,7 @@ impl TryFrom<&str> for HttpSignatureParams {
       .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?;
     // let sfv_parsed = Parser::parse_list(value.as_bytes()).map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?;
     if sfv_parsed.len() != 1 || !matches!(sfv_parsed[0], ListEntry::InnerList(_)) {
-      return Err(HttpSigError::InvalidSignatureParams("Invalid signature params".to_string()));
+      return Err(HttpSigError::InvalidSignatureParams("Invalid signature params"));
     }
     HttpSignatureParams::try_from(&sfv_parsed[0])
   }

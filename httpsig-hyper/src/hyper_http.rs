@@ -337,7 +337,7 @@ where
   {
     if !self.has_message_signature() {
       return Err(HyperSigError::NoSignatureHeaders(
-        "The request does not have signature and signature-input headers".to_string(),
+        "The request does not have signature and signature-input headers",
       ));
     }
     let map_signature_with_base = self.extract_signatures()?;
@@ -468,7 +468,7 @@ where
   {
     if !self.has_message_signature() {
       return Err(HyperSigError::NoSignatureHeaders(
-        "The response does not have signature and signature-input headers".to_string(),
+        "The response does not have signature and signature-input headers",
       ));
     }
     let map_signature_with_base = self.extract_signatures(req_for_param)?;
@@ -615,8 +615,8 @@ fn get_alg_key_ids_inner<B>(
       let alg = headers
         .signature_params()
         .alg
-        .clone()
-        .map(|a| AlgorithmName::from_str(&a))
+        .as_ref()
+        .map(|a| AlgorithmName::from_str(a))
         .transpose()
         .ok()
         .flatten();
@@ -646,11 +646,11 @@ fn extract_signatures_inner<B1, B2>(
 ) -> HyperSigResult<IndexMap<SignatureName, (HttpSignatureBase, HttpSignatureHeaders)>> {
   let signature_headers_map = extract_signature_headers_with_name(req_or_res)?;
   let extracted = signature_headers_map
-    .iter()
+    .into_iter()
     .filter_map(|(name, headers)| {
       build_signature_base(req_or_res, headers.signature_params(), req_for_param)
         .ok()
-        .map(|base| (name.clone(), (base, headers.clone())))
+        .map(|base| (name, (base, headers)))
     })
     .collect();
   Ok(extracted)
@@ -679,7 +679,7 @@ where
     async move {
       if filtered.is_empty() {
         return Err(HyperSigError::NoSignatureHeaders(
-          "No signature as appropriate target for verification".to_string(),
+          "No signature as appropriate target for verification",
         ));
       }
       // check if any one of the signature headers is valid
@@ -690,9 +690,7 @@ where
       if !successful_sig_names.is_empty() {
         Ok(successful_sig_names.first().unwrap().clone())
       } else {
-        Err(HyperSigError::InvalidSignature(
-          "Invalid signature for the verifying key".to_string(),
-        ))
+        Err(HyperSigError::InvalidSignature("Invalid signature for the verifying key"))
       }
     }
   });
@@ -712,16 +710,14 @@ impl<B> RequestOrResponse<'_, B> {
   fn method(&self) -> HyperSigResult<&http::Method> {
     match self {
       RequestOrResponse::Request(req) => Ok(req.method()),
-      _ => Err(HyperSigError::InvalidComponentName(
-        "`method` is only for request".to_string(),
-      )),
+      _ => Err(HyperSigError::InvalidComponentName("`method` is only for request".into())),
     }
   }
 
   fn uri(&self) -> HyperSigResult<&http::Uri> {
     match self {
       RequestOrResponse::Request(req) => Ok(req.uri()),
-      _ => Err(HyperSigError::InvalidComponentName("`uri` is only for request".to_string())),
+      _ => Err(HyperSigError::InvalidComponentName("`uri` is only for request".into())),
     }
   }
 
@@ -735,9 +731,7 @@ impl<B> RequestOrResponse<'_, B> {
   fn status(&self) -> HyperSigResult<http::StatusCode> {
     match self {
       RequestOrResponse::Response(res) => Ok(res.status()),
-      _ => Err(HyperSigError::InvalidComponentName(
-        "`status` is only for response".to_string(),
-      )),
+      _ => Err(HyperSigError::InvalidComponentName("`status` is only for response".into())),
     }
   }
 }
@@ -747,7 +741,7 @@ fn extract_signature_headers_with_name<B>(req_or_res: &RequestOrResponse<B>) -> 
   let headers = req_or_res.headers();
   if !(headers.contains_key("signature-input") && headers.contains_key("signature")) {
     return Err(HyperSigError::NoSignatureHeaders(
-      "The request does not have signature and signature-input headers".to_string(),
+      "The request does not have signature and signature-input headers",
     ));
   };
 
@@ -800,14 +794,14 @@ fn build_signature_base<B1, B2>(
     })
     .collect::<Result<Vec<_>, _>>()?;
 
-  HttpSignatureBase::try_new(&component_lines, signature_params).map_err(|e| e.into())
+  HttpSignatureBase::try_new(component_lines, signature_params).map_err(|e| e.into())
 }
 
 /// Extract http field from hyper http request/response
 fn extract_http_field<B>(req_or_res: &RequestOrResponse<B>, id: &HttpMessageComponentId) -> HyperSigResult<HttpMessageComponent> {
   let HttpMessageComponentName::HttpField(header_name) = &id.name else {
     return Err(HyperSigError::InvalidComponentName(
-      "invalid http message component name as http field".to_string(),
+      "invalid http message component name as http field".into(),
     ));
   };
   let headers = match req_or_res {
@@ -821,7 +815,7 @@ fn extract_http_field<B>(req_or_res: &RequestOrResponse<B>, id: &HttpMessageComp
     .map(|v| v.to_str().map(|s| s.to_owned()))
     .collect::<Result<Vec<_>, _>>()?;
 
-  HttpMessageComponent::try_from((id, field_values.as_slice())).map_err(|e| e.into())
+  HttpMessageComponent::try_from((id, field_values)).map_err(|e| e.into())
 }
 
 /// Extract derived component from hyper http request/response
@@ -831,7 +825,7 @@ fn extract_derived_component<B>(
 ) -> HyperSigResult<HttpMessageComponent> {
   let HttpMessageComponentName::Derived(derived_id) = &id.name else {
     return Err(HyperSigError::InvalidComponentName(
-      "invalid http message component name as derived component".to_string(),
+      "invalid http message component name as derived component".into(),
     ));
   };
   // Validate parameters allowed on derived components (RFC 9421).
@@ -860,9 +854,7 @@ fn extract_derived_component<B>(
   match req_or_res {
     RequestOrResponse::Request(_) => {
       if matches!(derived_id, DerivedComponentName::Status) {
-        return Err(HyperSigError::InvalidComponentName(
-          "`status` is only for response".to_string(),
-        ));
+        return Err(HyperSigError::InvalidComponentName("`status` is only for response".into()));
       }
     }
     RequestOrResponse::Response(_) => {
@@ -874,7 +866,7 @@ fn extract_derived_component<B>(
         && !has_req
       {
         return Err(HyperSigError::InvalidComponentName(
-          "derived components other than `@status` and `@signature-params` require `req` parameter for response".to_string(),
+          "derived components other than `@status` and `@signature-params` require `req` parameter for response".into(),
         ));
       }
       // `@status` must not have `req` parameter
@@ -924,7 +916,7 @@ fn extract_derived_component<B>(
       .collect::<Vec<_>>(),
   };
 
-  HttpMessageComponent::try_from((id, field_values.as_slice())).map_err(|e| e.into())
+  HttpMessageComponent::try_from((id, field_values)).map_err(|e| e.into())
 }
 
 /* --------------------------------------- */

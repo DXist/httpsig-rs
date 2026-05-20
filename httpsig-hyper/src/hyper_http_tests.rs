@@ -116,7 +116,7 @@ async fn test_extract_signature_params_from_request() {
   let component = extract_http_message_component(&req_or_res, &component_id).unwrap();
   assert_eq!(component.to_string(), "\"@signature-params\": (\"@method\" \"@authority\")");
   assert_eq!(component.value.to_string(), r##"("@method" "@authority")"##);
-  assert_eq!(component.value.as_field_value(), r##"sig1=("@method" "@authority")"##);
+  assert_eq!(component.value.to_field_value(), r##"sig1=("@method" "@authority")"##);
   assert_eq!(component.value.as_component_value(), r##"("@method" "@authority")"##);
   assert_eq!(component.value.key(), Some("sig1"));
 }
