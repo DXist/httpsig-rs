@@ -78,25 +78,24 @@ fn build_query_request() -> Request<BoxBody> {
 #[tokio::test]
 async fn test_extract_component_from_request() {
   let req = build_request().await;
-  let req_or_res = RequestOrResponse::Request(&req);
 
   let component_id_method = HttpMessageComponentId::try_from("\"@method\"").unwrap();
-  let component = extract_http_message_component(&req_or_res, &component_id_method).unwrap();
+  let component = extract_http_message_component(&req, &component_id_method).unwrap();
   assert_eq!(component.to_string(), "\"@method\": GET");
 
   let component_id = HttpMessageComponentId::try_from("\"date\"").unwrap();
-  let component = extract_http_message_component(&req_or_res, &component_id).unwrap();
+  let component = extract_http_message_component(&req, &component_id).unwrap();
   assert_eq!(component.to_string(), "\"date\": Sun, 09 May 2021 18:30:00 GMT");
 
   let component_id = HttpMessageComponentId::try_from("content-type").unwrap();
-  let component = extract_http_field(&req_or_res, &component_id).unwrap();
+  let component = extract_http_field(&req, &component_id).unwrap();
   assert_eq!(
     component.to_string(),
     "\"content-type\": application/json, application/json-patch+json"
   );
 
   let component_id = HttpMessageComponentId::try_from("content-digest").unwrap();
-  let component = extract_http_message_component(&req_or_res, &component_id).unwrap();
+  let component = extract_http_message_component(&req, &component_id).unwrap();
   assert_eq!(
     component.to_string(),
     "\"content-digest\": sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:"
@@ -112,8 +111,7 @@ async fn test_extract_signature_params_from_request() {
     http::HeaderValue::from_static(r##"sig1=("@method" "@authority")"##),
   );
   let component_id = HttpMessageComponentId::try_from("@signature-params").unwrap();
-  let req_or_res = RequestOrResponse::Request(&req);
-  let component = extract_http_message_component(&req_or_res, &component_id).unwrap();
+  let component = extract_http_message_component(&req, &component_id).unwrap();
   assert_eq!(component.to_string(), "\"@signature-params\": (\"@method\" \"@authority\")");
   assert_eq!(component.value.to_string(), r##"("@method" "@authority")"##);
   assert_eq!(component.value.to_field_value(), r##"sig1=("@method" "@authority")"##);
@@ -129,8 +127,7 @@ async fn test_build_signature_base_from_request() {
   let values = (r##""@method" "content-type" "date" "content-digest""##, SIGPARA);
   let signature_params = HttpSignatureParams::try_from(format!("({}){}", values.0, values.1).as_str()).unwrap();
 
-  let req_or_res = RequestOrResponse::Request(&req);
-  let signature_base = build_signature_base(&req_or_res, signature_params, None as Option<&Request<()>>).unwrap();
+  let signature_base = build_signature_base(&req, signature_params, None as Option<&Request<()>>).unwrap();
   assert_eq!(
     signature_base.to_string(),
     r##""@method": GET
@@ -156,8 +153,7 @@ async fn test_extract_tuples_from_request() {
     ),
   );
 
-  let req_or_res = RequestOrResponse::Request(&req);
-  let tuples = extract_signature_headers_with_name(&req_or_res).unwrap();
+  let tuples = extract_signature_headers_with_name(&req).unwrap();
   assert_eq!(tuples.len(), 1);
   let (signature_name, headers) = tuples.into_iter().next().expect("not empty");
   assert_eq!(signature_name, "sig11");
@@ -236,8 +232,7 @@ async fn test_set_verify_with_signature_name() {
     .await
     .unwrap();
 
-  let req_or_res = RequestOrResponse::Request(&req);
-  let signature_headers_map = extract_signature_headers_with_name(&req_or_res).unwrap();
+  let signature_headers_map = extract_signature_headers_with_name(&req).unwrap();
   assert_eq!(signature_headers_map.len(), 1);
   let sig_name = signature_headers_map.keys().next().expect("not empty");
   assert_eq!(sig_name, "custom_sig_name");
@@ -467,12 +462,11 @@ async fn test_query_param_sign_verify_async() {
 #[test]
 fn test_extract_derived_component_rejects_name_on_non_query_param() {
   let req = build_query_request();
-  let req_or_res = RequestOrResponse::Request(&req);
   // `@method;name="foo"` is invalid — `name` is only for `@query-param`
   let id = HttpMessageComponentId::try_from("\"@method\";name=\"foo\"");
   // component_id parsing itself may reject this; if it doesn't, extraction should
   if let Ok(id) = id {
-    let result = extract_derived_component(&req_or_res, &id);
+    let result = extract_derived_component(&req, &id);
     assert!(result.is_err(), "expected error for `name` on `@method`");
   }
 }
@@ -480,11 +474,10 @@ fn test_extract_derived_component_rejects_name_on_non_query_param() {
 #[test]
 fn test_extract_derived_component_rejects_sf_on_derived() {
   let req = build_query_request();
-  let req_or_res = RequestOrResponse::Request(&req);
   // `@method;sf` is invalid — `sf` is only for HTTP field components
   let id = HttpMessageComponentId::try_from("\"@method\";sf");
   if let Ok(id) = id {
-    let result = extract_derived_component(&req_or_res, &id);
+    let result = extract_derived_component(&req, &id);
     assert!(result.is_err(), "expected error for `sf` on derived component");
   }
 }
@@ -538,41 +531,40 @@ fn test_set_message_signature_sync_propagates_build_error() {
 fn test_extract_derived_components_values() {
   let req = build_query_request();
   // URI: https://example.com/path?foo=bar&id=123&x=y
-  let req_or_res = RequestOrResponse::Request(&req);
 
   // @method (§2.2.1)
   let id = HttpMessageComponentId::try_from("@method").unwrap();
-  let c = extract_derived_component(&req_or_res, &id).unwrap();
+  let c = extract_derived_component(&req, &id).unwrap();
   assert_eq!(c.to_string(), "\"@method\": GET");
 
   // @target-uri (§2.2.2)
   let id = HttpMessageComponentId::try_from("@target-uri").unwrap();
-  let c = extract_derived_component(&req_or_res, &id).unwrap();
+  let c = extract_derived_component(&req, &id).unwrap();
   assert_eq!(c.to_string(), "\"@target-uri\": https://example.com/path?foo=bar&id=123&x=y");
 
   // @authority (§2.2.3)
   let id = HttpMessageComponentId::try_from("@authority").unwrap();
-  let c = extract_derived_component(&req_or_res, &id).unwrap();
+  let c = extract_derived_component(&req, &id).unwrap();
   assert_eq!(c.to_string(), "\"@authority\": example.com");
 
   // @scheme (§2.2.4)
   let id = HttpMessageComponentId::try_from("@scheme").unwrap();
-  let c = extract_derived_component(&req_or_res, &id).unwrap();
+  let c = extract_derived_component(&req, &id).unwrap();
   assert_eq!(c.to_string(), "\"@scheme\": https");
 
   // @path (§2.2.6)
   let id = HttpMessageComponentId::try_from("@path").unwrap();
-  let c = extract_derived_component(&req_or_res, &id).unwrap();
+  let c = extract_derived_component(&req, &id).unwrap();
   assert_eq!(c.to_string(), "\"@path\": /path");
 
   // @query (§2.2.7)
   let id = HttpMessageComponentId::try_from("@query").unwrap();
-  let c = extract_derived_component(&req_or_res, &id).unwrap();
+  let c = extract_derived_component(&req, &id).unwrap();
   assert_eq!(c.to_string(), "\"@query\": ?foo=bar&id=123&x=y");
 
   // @query-param;name="id" (§2.2.8)
   let id = HttpMessageComponentId::try_from("\"@query-param\";name=\"id\"").unwrap();
-  let c = extract_derived_component(&req_or_res, &id).unwrap();
+  let c = extract_derived_component(&req, &id).unwrap();
   assert_eq!(c.to_string(), "\"@query-param\";name=\"id\": 123");
 }
 
