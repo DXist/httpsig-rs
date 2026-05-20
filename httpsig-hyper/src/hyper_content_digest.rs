@@ -75,7 +75,9 @@ pub trait RequestContentDigest {
     Self: Sized;
 
   /// Verify the content digest in the request and returns self if it's valid otherwise returns error
-  fn verify_content_digest(self) -> impl Future<Output = Result<Self::PassthroughRequest, Self::Error>> + Send
+  fn verify_content_digest(
+    self,
+  ) -> impl Future<Output = Result<Self::PassthroughRequest, Self::Error>> + Send
   where
     Self: Sized;
 }
@@ -94,7 +96,9 @@ pub trait ResponseContentDigest {
     Self: Sized;
 
   /// Verify the content digest in the response and returns self if it's valid otherwise returns error
-  fn verify_content_digest(self) -> impl Future<Output = Result<Self::PassthroughResponse, Self::Error>> + Send
+  fn verify_content_digest(
+    self,
+  ) -> impl Future<Output = Result<Self::PassthroughResponse, Self::Error>> + Send
   where
     Self: Sized;
 }
@@ -108,7 +112,10 @@ where
   type PassthroughRequest = Request<BoxBody<Bytes, Self::Error>>;
 
   /// Set the content digest in the request
-  async fn set_content_digest(self, cd_type: &ContentDigestType) -> HyperDigestResult<Self::PassthroughRequest>
+  async fn set_content_digest(
+    self,
+    cd_type: &ContentDigestType,
+  ) -> HyperDigestResult<Self::PassthroughRequest>
   where
     Self: Sized,
   {
@@ -117,11 +124,14 @@ where
       .into_bytes_with_digest(cd_type)
       .await
       .map_err(|_e| HyperDigestError::HttpBodyError("Failed to generate digest".to_string()))?;
-    let new_body = Full::new(body_bytes).map_err(|never| match never {}).boxed();
+    let new_body = Full::new(body_bytes)
+      .map_err(|never| match never {})
+      .boxed();
 
-    parts
-      .headers
-      .insert(CONTENT_DIGEST_HEADER, format!("{cd_type}=:{digest}:").parse().unwrap());
+    parts.headers.insert(
+      CONTENT_DIGEST_HEADER,
+      format!("{cd_type}=:{digest}:").parse().unwrap(),
+    );
 
     let new_req = Request::from_parts(parts, new_body);
     Ok(new_req)
@@ -144,7 +154,9 @@ where
 
     // Use constant time equality check to prevent timing attacks
     if is_equal_digest(&digest, &expected_digest) {
-      let new_body = Full::new(body_bytes).map_err(|never| match never {}).boxed();
+      let new_body = Full::new(body_bytes)
+        .map_err(|never| match never {})
+        .boxed();
       let res = Request::from_parts(header, new_body);
       Ok(res)
     } else {
@@ -163,7 +175,10 @@ where
   type Error = HyperDigestError;
   type PassthroughResponse = Response<BoxBody<Bytes, Self::Error>>;
 
-  async fn set_content_digest(self, cd_type: &ContentDigestType) -> HyperDigestResult<Self::PassthroughResponse>
+  async fn set_content_digest(
+    self,
+    cd_type: &ContentDigestType,
+  ) -> HyperDigestResult<Self::PassthroughResponse>
   where
     Self: Sized,
   {
@@ -172,11 +187,14 @@ where
       .into_bytes_with_digest(cd_type)
       .await
       .map_err(|_e| HyperDigestError::HttpBodyError("Failed to generate digest".to_string()))?;
-    let new_body = Full::new(body_bytes).map_err(|never| match never {}).boxed();
+    let new_body = Full::new(body_bytes)
+      .map_err(|never| match never {})
+      .boxed();
 
-    parts
-      .headers
-      .insert(CONTENT_DIGEST_HEADER, format!("{cd_type}=:{digest}:").parse().unwrap());
+    parts.headers.insert(
+      CONTENT_DIGEST_HEADER,
+      format!("{cd_type}=:{digest}:").parse().unwrap(),
+    );
 
     let new_req = Response::from_parts(parts, new_body);
     Ok(new_req)
@@ -196,7 +214,9 @@ where
 
     // Use constant time equality check to prevent timing attacks
     if is_equal_digest(&digest, &expected_digest) {
-      let new_body = Full::new(body_bytes).map_err(|never| match never {}).boxed();
+      let new_body = Full::new(body_bytes)
+        .map_err(|never| match never {})
+        .boxed();
       let res = Response::from_parts(header, new_body);
       Ok(res)
     } else {
@@ -217,10 +237,14 @@ fn is_equal_digest(digest1: &[u8], digest2: &[u8]) -> bool {
   digest1.ct_eq(digest2).into()
 }
 
-async fn extract_content_digest(header_map: &http::HeaderMap) -> HyperDigestResult<(ContentDigestType, Vec<u8>)> {
+async fn extract_content_digest(
+  header_map: &http::HeaderMap,
+) -> HyperDigestResult<(ContentDigestType, Vec<u8>)> {
   let content_digest_header = header_map
     .get(CONTENT_DIGEST_HEADER)
-    .ok_or(HyperDigestError::NoDigestHeader("No content-digest header".to_string()))?
+    .ok_or(HyperDigestError::NoDigestHeader(
+      "No content-digest header".to_string(),
+    ))?
     .to_str()?;
   let indexmap = sfv::Parser::new(content_digest_header)
     .parse::<sfv::Dictionary>()
@@ -231,8 +255,9 @@ async fn extract_content_digest(header_map: &http::HeaderMap) -> HyperDigestResu
     ));
   };
   let (cd_type, cd) = indexmap.iter().next().unwrap();
-  let cd_type = ContentDigestType::from_str(cd_type.as_str())
-    .map_err(|e| HyperDigestError::InvalidHeaderValue(format!("Invalid Content-Digest type: {e}")))?;
+  let cd_type = ContentDigestType::from_str(cd_type.as_str()).map_err(|e| {
+    HyperDigestError::InvalidHeaderValue(format!("Invalid Content-Digest type: {e}"))
+  })?;
   if !matches!(
     cd,
     sfv::ListEntry::Item(sfv::Item {
@@ -263,11 +288,17 @@ mod tests {
   #[tokio::test]
   async fn content_digest() {
     let body = Full::new(&b"{\"hello\": \"world\"}"[..]);
-    let (_body_bytes, digest) = body.into_bytes_with_digest(&ContentDigestType::Sha256).await.unwrap();
+    let (_body_bytes, digest) = body
+      .into_bytes_with_digest(&ContentDigestType::Sha256)
+      .await
+      .unwrap();
 
     assert_eq!(digest, "X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=");
 
-    let (_body_bytes, digest) = body.into_bytes_with_digest(&ContentDigestType::Sha512).await.unwrap();
+    let (_body_bytes, digest) = body
+      .into_bytes_with_digest(&ContentDigestType::Sha512)
+      .await
+      .unwrap();
     assert_eq!(
       digest,
       "WZDPaVn/7XgHaAy8pmojAkGWoRx2UFChF41A2svX+TaPm+AbwAgBWnrIiYllu7BNNyealdVLvRwEmTHWXvJwew=="
@@ -285,11 +316,22 @@ mod tests {
       .header("content-type", "application/json")
       .body(body)
       .unwrap();
-    let req = req.set_content_digest(&ContentDigestType::Sha256).await.unwrap();
+    let req = req
+      .set_content_digest(&ContentDigestType::Sha256)
+      .await
+      .unwrap();
 
     assert!(req.headers().contains_key(CONTENT_DIGEST_HEADER));
-    let digest = req.headers().get(CONTENT_DIGEST_HEADER).unwrap().to_str().unwrap();
-    assert_eq!(digest, format!("sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:"));
+    let digest = req
+      .headers()
+      .get(CONTENT_DIGEST_HEADER)
+      .unwrap()
+      .to_str()
+      .unwrap();
+    assert_eq!(
+      digest,
+      format!("sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:")
+    );
 
     let verified = req.verify_content_digest().await;
     assert!(verified.is_ok());
@@ -305,11 +347,22 @@ mod tests {
       .header("content-type", "application/json")
       .body(body)
       .unwrap();
-    let res = res.set_content_digest(&ContentDigestType::Sha256).await.unwrap();
+    let res = res
+      .set_content_digest(&ContentDigestType::Sha256)
+      .await
+      .unwrap();
 
     assert!(res.headers().contains_key(CONTENT_DIGEST_HEADER));
-    let digest = res.headers().get(CONTENT_DIGEST_HEADER).unwrap().to_str().unwrap();
-    assert_eq!(digest, format!("sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:"));
+    let digest = res
+      .headers()
+      .get(CONTENT_DIGEST_HEADER)
+      .unwrap()
+      .to_str()
+      .unwrap();
+    assert_eq!(
+      digest,
+      format!("sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:")
+    );
 
     let verified = res.verify_content_digest().await;
     assert!(verified.is_ok());
@@ -327,7 +380,10 @@ mod tests {
       .body(body)
       .unwrap();
 
-    let req = req.set_content_digest(&ContentDigestType::Sha256).await.unwrap();
+    let req = req
+      .set_content_digest(&ContentDigestType::Sha256)
+      .await
+      .unwrap();
     assert!(req.headers().contains_key(CONTENT_DIGEST_HEADER));
 
     // 2) Tamper the body while keeping the digest header unchanged
@@ -355,7 +411,10 @@ mod tests {
       .body(body)
       .unwrap();
 
-    let res = res.set_content_digest(&ContentDigestType::Sha256).await.unwrap();
+    let res = res
+      .set_content_digest(&ContentDigestType::Sha256)
+      .await
+      .unwrap();
     let (mut parts, body) = res.into_parts();
 
     // 2) Tamper the Content-Digest header (keep it syntactically valid)
@@ -363,7 +422,9 @@ mod tests {
     // Change the first character to another valid base64 character.
     parts.headers.insert(
       CONTENT_DIGEST_HEADER,
-      "sha-256=:Y48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:".parse().unwrap(),
+      "sha-256=:Y48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:"
+        .parse()
+        .unwrap(),
     );
 
     let tampered_res = Response::from_parts(parts, body);
@@ -409,7 +470,10 @@ mod tests {
       .body(body)
       .unwrap();
 
-    let req = req.set_content_digest(&ContentDigestType::Sha256).await.unwrap();
+    let req = req
+      .set_content_digest(&ContentDigestType::Sha256)
+      .await
+      .unwrap();
 
     // 2) Extract parts and replace the Content-Digest header
     //    with a syntactically valid but length-mismatched base64 value.

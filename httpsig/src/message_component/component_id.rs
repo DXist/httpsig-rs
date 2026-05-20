@@ -35,18 +35,19 @@ impl TryFrom<&str> for HttpMessageComponentId {
   /// But accept string in the form of `<name>` (without double quotations) when no param is given
   fn try_from(val: &str) -> HttpSigResult<Self> {
     let val = val.trim();
-    let item: sfv::Item = if !val.starts_with('"') && !val.ends_with('"') && !val.is_empty() && !val.contains('"') {
-      // maybe insufficient, but it's enough for now
-      Parser::new(format!("\"{val}\"").as_str())
-        .parse()
-        .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?
-      // Parser::parse_item(format!("\"{val}\"").as_bytes()).map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?
-    } else {
-      Parser::new(val)
-        .parse()
-        .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?
-      // Parser::parse_item(val.as_bytes()).map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?
-    };
+    let item: sfv::Item =
+      if !val.starts_with('"') && !val.ends_with('"') && !val.is_empty() && !val.contains('"') {
+        // maybe insufficient, but it's enough for now
+        Parser::new(format!("\"{val}\"").as_str())
+          .parse()
+          .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?
+        // Parser::parse_item(format!("\"{val}\"").as_bytes()).map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?
+      } else {
+        Parser::new(val)
+          .parse()
+          .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?
+        // Parser::parse_item(val.as_bytes()).map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?
+      };
 
     let res = Self {
       name: HttpMessageComponentName::try_from(&item.bare_item)?,
@@ -54,8 +55,15 @@ impl TryFrom<&str> for HttpMessageComponentId {
     };
 
     // assert for query param
-    if res.params.0.iter().any(|v| matches!(v, &HttpMessageComponentParam::Name(_)))
-      && !matches!(res.name, HttpMessageComponentName::Derived(DerivedComponentName::QueryParam))
+    if res
+      .params
+      .0
+      .iter()
+      .any(|v| matches!(v, &HttpMessageComponentParam::Name(_)))
+      && !matches!(
+        res.name,
+        HttpMessageComponentName::Derived(DerivedComponentName::QueryParam)
+      )
     {
       return Err(HttpSigError::InvalidComponentId(format!(
         "Invalid http message component id: {res}"

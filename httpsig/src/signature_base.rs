@@ -29,7 +29,10 @@ pub struct HttpSignatureHeaders {
 
 impl HttpSignatureHeaders {
   /// Generates (possibly multiple) HttpSignatureHeaders from signature and signature-input header values
-  pub fn try_parse(signature_header: &str, signature_input_header: &str) -> HttpSigResult<HttpSignatureHeadersMap> {
+  pub fn try_parse(
+    signature_header: &str,
+    signature_input_header: &str,
+  ) -> HttpSigResult<HttpSignatureHeadersMap> {
     let signature_input: sfv::Dictionary = Parser::new(signature_input_header)
       .parse()
       .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?;
@@ -65,7 +68,10 @@ impl HttpSignatureHeaders {
         "The signature header is not a dictionary".to_string(),
       ));
     }
-    if !signature_input.values().all(|v| matches!(v, ListEntry::InnerList(_))) {
+    if !signature_input
+      .values()
+      .all(|v| matches!(v, ListEntry::InnerList(_)))
+    {
       return Err(HttpSigError::BuildSignatureHeaderError(
         "The signature-input header is not a dictionary".to_string(),
       ));
@@ -148,7 +154,10 @@ impl HttpSignatureBase {
   /// This should not be exposed to user and not used directly.
   /// Use wrapper functions generating SignatureBase from base HTTP request and Signer itself instead when newly generating signature
   /// When verifying signature, use wrapper functions generating SignatureBase from HTTP request containing signature params itself instead.
-  pub fn try_new(component_lines: &[HttpMessageComponent], signature_params: &HttpSignatureParams) -> HttpSigResult<Self> {
+  pub fn try_new(
+    component_lines: &[HttpMessageComponent],
+    signature_params: &HttpSignatureParams,
+  ) -> HttpSigResult<Self> {
     // check if the order of component lines is the same as the order of covered message component ids
     if component_lines.len() != signature_params.covered_components.len() {
       return Err(HttpSigError::BuildSignatureBaseError(
@@ -261,9 +270,11 @@ mod test {
   /// こんな感じでSignatureBaseをParamsとかComponentLinesから直接作るのは避ける。
   #[test]
   fn test_signature_base_directly_instantiated() {
-    const SIGPARA: &str = r##";created=1704972031;alg="ed25519";keyid="gjrE7ACMxgzYfFHgabgf4kLTg1eKIdsJ94AiFTFj1is=""##;
+    const SIGPARA: &str =
+      r##";created=1704972031;alg="ed25519";keyid="gjrE7ACMxgzYfFHgabgf4kLTg1eKIdsJ94AiFTFj1is=""##;
     let values = (r##""@method" "@path" "date" "content-digest""##, SIGPARA);
-    let signature_params = HttpSignatureParams::try_from(format!("({}){}", values.0, values.1).as_str()).unwrap();
+    let signature_params =
+      HttpSignatureParams::try_from(format!("({}){}", values.0, values.1).as_str()).unwrap();
 
     let component_lines = COMPONENT_LINES
       .iter()

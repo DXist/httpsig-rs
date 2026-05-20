@@ -61,7 +61,8 @@ pub use error::{HyperDigestError, HyperDigestResult, HyperSigError, HyperSigResu
 pub use httpsig::prelude;
 pub use hyper_content_digest::{ContentDigest, RequestContentDigest, ResponseContentDigest};
 pub use hyper_http::{
-  MessageSignature, MessageSignatureReq, MessageSignatureReqSync, MessageSignatureRes, MessageSignatureResSync,
+  MessageSignature, MessageSignatureReq, MessageSignatureReqSync, MessageSignatureRes,
+  MessageSignatureResSync,
 };
 
 /* ----------------------------------------------------------------- */
