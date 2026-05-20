@@ -139,3 +139,12 @@ async fn verifier<B>(res: &Response<B>, sent_req: &Request<B>) -> HttpSigResult<
 ## Examples
 
 See [./httpsig-hyper/examples](./httpsig-hyper/examples/) for detailed examples with `hyper` extension.
+
+## Contributing
+
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening Issues or Pull Requests.
+
+In particular:
+- keep changes minimal and focused,
+- avoid unrelated formatting changes,
+- and minimize reviewer burden for security-sensitive changes.
