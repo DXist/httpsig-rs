@@ -1,8 +1,8 @@
 use super::{
   super::{
+    ContentDigestType,
     error::HyperDigestError,
     hyper_content_digest::{RequestContentDigest, ResponseContentDigest},
-    ContentDigestType,
   },
   *,
 };
@@ -601,13 +601,26 @@ async fn test_response_with_query_param_req_sign_verify() {
     .await
     .unwrap();
 
-  assert!(req.headers().get("signature-input").is_none(), "request should not be modified");
-  assert!(res.headers().get("signature-input").is_some(), "signature-input header is missing on response");
-  assert!(res.headers().get("signature").is_some(), "signature header is missing on response");
+  assert!(
+    req.headers().get("signature-input").is_none(),
+    "request should not be modified"
+  );
+  assert!(
+    res.headers().get("signature-input").is_some(),
+    "signature-input header is missing on response"
+  );
+  assert!(
+    res.headers().get("signature").is_some(),
+    "signature header is missing on response"
+  );
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
   let verification_res = res.verify_message_signature(&public_key, None, Some(&req)).await;
-  assert!(verification_res.is_ok(), "signature verification failed: {:?}", verification_res.err());
+  assert!(
+    verification_res.is_ok(),
+    "signature verification failed: {:?}",
+    verification_res.err()
+  );
 }
 
 // ---- RFC 9421: Response must reject request-derived components without `req` ----
