@@ -6,7 +6,6 @@ use crate::{
 use base64::{Engine as _, engine::general_purpose};
 use compact_str::{CompactString, ToCompactString};
 use hmac::{Hmac, Mac};
-use sha2::{Digest, Sha256};
 
 type HmacSha256 = Hmac<sha2::Sha256>;
 
@@ -26,6 +25,12 @@ impl SharedKey {
     let key = general_purpose::STANDARD.decode(key)?;
     match alg {
       AlgorithmName::HmacSha256 => Ok(SharedKey::HmacSha256(key)),
+      #[cfg(any(
+        feature = "ed25519-signature",
+        feature = "ecdsa-p256-sha256-signature",
+        feature = "ecdsa-p384-sha384-signature",
+        feature = "rsa-signature"
+      ))]
       _ => Err(HttpSigError::InvalidAlgorithmName(alg.to_compact_string())),
     }
   }
@@ -43,6 +48,7 @@ impl super::SigningKey for SharedKey {
       }
     }
   }
+  #[cfg(feature = "key-id")]
   /// Get the key id
   fn key_id(&self) -> CompactString {
     use super::VerifyingKey;
@@ -69,11 +75,13 @@ impl super::VerifyingKey for SharedKey {
     }
   }
 
+  #[cfg(feature = "key-id")]
   /// Get the key id
   fn key_id(&self) -> CompactString {
     match self {
       SharedKey::HmacSha256(key) => {
-        let mut hasher = <Sha256 as Digest>::new();
+        use sha2::Digest;
+        let mut hasher = <sha2::Sha256 as Digest>::new();
         hasher.update(key);
         let hash = hasher.finalize();
         general_purpose::STANDARD.encode(hash).into()

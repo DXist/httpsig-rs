@@ -59,6 +59,7 @@ impl std::str::FromStr for ContentDigestType {
   }
 }
 
+#[cfg(any(feature = "digest-sha256", feature = "digest-sha512"))]
 use compact_str::ToCompactString;
 pub use error::{HyperDigestError, HyperDigestResult, HyperSigError, HyperSigResult};
 pub use httpsig::prelude;
