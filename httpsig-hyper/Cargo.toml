@@ -49,3 +49,8 @@ tokio = { version = "1.49.0", default-features = false, features = [
   "macros",
   "rt-multi-thread",
 ] } # testing only
+criterion = "0.8"
+
+[[bench]]
+name = "hyper"
+harness = false
