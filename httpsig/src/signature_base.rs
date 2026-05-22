@@ -1,7 +1,8 @@
-use std::fmt::{self, Write as _};
+use std::fmt::{self, Display, Write as _};
 use std::io::Write as _;
 
 use base64::{Engine as _, engine::general_purpose};
+use compact_str::{CompactString, ToCompactString};
 use indexmap::IndexMap;
 use rustc_hash::FxBuildHasher;
 use sfv::{BareItem, Item, ListEntry, Parser};
@@ -15,11 +16,13 @@ use crate::{
 };
 
 /// IndexMap of signature name and HttpSignatureHeaders
-pub type HttpSignatureHeadersMap = IndexMap<String, HttpSignatureHeaders, FxBuildHasher>;
+pub type HttpSignatureHeadersMap = IndexMap<CompactString, HttpSignatureHeaders, FxBuildHasher>;
 
 #[derive(Debug, Clone)]
 /// Signature Headers derived from HttpSignatureBase
 pub struct HttpSignatureHeaders {
+  /// signature name coupling signature with signature input
+  signature_name: CompactString,
   /// Signature value of "Signature" http header in the form of "<signature_name>=:<base64_signature>:"
   signature: HttpSignature,
   /// signature-params value of "Signature-Input" http header in the form of "<signature_name>=:<signature_params>:"
@@ -29,12 +32,8 @@ pub struct HttpSignatureHeaders {
 impl HttpSignatureHeaders {
   /// Generates (possibly multiple) HttpSignatureHeaders from signature and signature-input header values
   pub fn try_parse(signature_header: &str, signature_input_header: &str) -> HttpSigResult<HttpSignatureHeadersMap> {
-    let signature_input: sfv::Dictionary = Parser::new(signature_input_header)
-      .parse()
-      .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?;
-    let mut signature: sfv::Dictionary = Parser::new(signature_header)
-      .parse()
-      .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?;
+    let signature_input: sfv::Dictionary = Parser::new(signature_input_header).parse()?;
+    let mut signature: sfv::Dictionary = Parser::new(signature_header).parse()?;
     // let signature_input =
     //   Parser::parse_dictionary(signature_input_header.as_bytes()).map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?;
     // let signature =
@@ -73,7 +72,7 @@ impl HttpSignatureHeaders {
     let res = signature_input
       .iter()
       .map(|(k, v)| {
-        let signature_name = k.to_string();
+        let signature_name = k.as_str().to_compact_string();
         let signature_params = HttpSignatureParams::try_from(v)?;
 
         let signature_bytes = match signature.swap_remove(k) {
@@ -91,7 +90,7 @@ impl HttpSignatureHeaders {
             signature,
             signature_params,
           },
-        )) as HttpSigResult<(String, Self)>
+        )) as HttpSigResult<(CompactString, Self)>
       })
       .collect::<Result<HttpSignatureHeadersMap, _>>()?;
     Ok(res)

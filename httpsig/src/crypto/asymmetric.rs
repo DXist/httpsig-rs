@@ -100,16 +100,19 @@ impl SecretKey {
   /// parse der
   /// Derive secret key from der bytes
   pub fn from_der(alg: &AlgorithmName, der: &[u8]) -> HttpSigResult<Self> {
-    let pki = PrivateKeyInfo::from_der(der).map_err(|e| HttpSigError::ParsePrivateKeyError(e.to_string()))?;
+    use compact_str::ToCompactString;
 
-    let sk_bytes = match pki.algorithm.oid.to_string().as_ref() {
+    let pki = PrivateKeyInfo::from_der(der)
+      .map_err(|e| HttpSigError::ParsePrivateKeyError(e.to_string().into()))?;
+
+    let sk_bytes = match pki.algorithm.oid.to_compact_string().as_ref() {
       // ec
       algorithm_oids::EC => {
         let param = pki
           .algorithm
           .parameters_oid()
-          .map_err(|e| HttpSigError::ParsePrivateKeyError(e.to_string()))?;
-        let algorithm_name = match param.to_string().as_ref() {
+          .map_err(|e| HttpSigError::ParsePrivateKeyError(e.to_string().into()))?;
+        let algorithm_name = match param.to_compact_string().as_ref() {
           params_oids::Secp256r1 => AlgorithmName::EcdsaP256Sha256,
           params_oids::Secp384r1 => AlgorithmName::EcdsaP384Sha384,
           _ => return Err(HttpSigError::ParsePrivateKeyError("Unsupported curve".to_string())),
@@ -299,7 +302,14 @@ impl PublicKey {
   #[allow(dead_code)]
   /// Convert from pem string
   pub fn from_pem(alg: &AlgorithmName, pem: &str) -> HttpSigResult<Self> {
+<<<<<<< HEAD
     let (tag, doc) = Document::from_pem(pem).map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string()))?;
+=======
+    use compact_str::ToCompactString;
+
+    let (tag, doc) = Document::from_pem(pem)
+      .map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string().into()))?;
+>>>>>>> 3ed9f4e (perf: use CompactString for often short string values)
     if tag != "PUBLIC KEY" {
       return Err(HttpSigError::ParsePublicKeyError("Invalid tag".to_string()));
     };
@@ -307,14 +317,14 @@ impl PublicKey {
     let spki_ref = SubjectPublicKeyInfoRef::from_der(doc.as_bytes())
       .map_err(|e| HttpSigError::ParsePublicKeyError(format!("Error decoding SubjectPublicKeyInfo: {e}").to_string()))?;
 
-    let pk_bytes = match spki_ref.algorithm.oid.to_string().as_ref() {
+    let pk_bytes = match spki_ref.algorithm.oid.to_compact_string().as_ref() {
       // ec
       algorithm_oids::EC => {
         let param = spki_ref
           .algorithm
           .parameters_oid()
-          .map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string()))?;
-        let algorithm_name = match param.to_string().as_ref() {
+          .map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string().into()))?;
+        let algorithm_name = match param.to_compact_string().as_ref() {
           params_oids::Secp256r1 => AlgorithmName::EcdsaP256Sha256,
           params_oids::Secp384r1 => AlgorithmName::EcdsaP384Sha384,
           _ => return Err(HttpSigError::ParsePublicKeyError("Unsupported curve".to_string())),

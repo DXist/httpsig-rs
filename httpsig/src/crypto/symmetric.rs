@@ -4,6 +4,7 @@ use crate::{
   trace::*,
 };
 use base64::{Engine as _, engine::general_purpose};
+use compact_str::ToCompactString;
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
 
@@ -25,10 +26,7 @@ impl SharedKey {
     let key = general_purpose::STANDARD.decode(key)?;
     match alg {
       AlgorithmName::HmacSha256 => Ok(SharedKey::HmacSha256(key)),
-      _ => Err(HttpSigError::InvalidAlgorithmName(format!(
-        "Unsupported algorithm for SharedKey: {}",
-        alg
-      ))),
+      _ => Err(HttpSigError::InvalidAlgorithmName(alg.to_compact_string())),
     }
   }
 }

@@ -4,6 +4,7 @@ mod symmetric;
 use crate::error::{HttpSigError, HttpSigResult};
 
 pub use asymmetric::{PublicKey, SecretKey};
+use compact_str::ToCompactString;
 pub use symmetric::SharedKey;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -53,7 +54,7 @@ impl core::str::FromStr for AlgorithmName {
       "rsa-v1_5-sha256" => Ok(Self::RsaV1_5Sha256),
       #[cfg(feature = "rsa-signature")]
       "rsa-pss-sha512" => Ok(Self::RsaPssSha512),
-      _ => Err(HttpSigError::InvalidAlgorithmName(s.to_string())),
+      _ => Err(HttpSigError::InvalidAlgorithmName(s.to_compact_string())),
     }
   }
 }
