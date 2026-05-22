@@ -847,8 +847,7 @@ fn extract_derived_component<B>(
       "`req`-tagged component must be extracted from the source request".to_string(),
     )),
     _ => Err(HyperSigError::InvalidComponentParam(format!(
-      "parameter `{}` is not allowed on derived components",
-      String::from(param.clone())
+      "parameter `{param}` is not allowed on derived components",
     ))),
   })?;
 

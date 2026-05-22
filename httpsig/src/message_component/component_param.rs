@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::error::{HttpSigError, HttpSigResult};
 use sfv::{FieldType, Parser};
 
@@ -24,16 +26,17 @@ pub enum HttpMessageComponentParam {
   Name(String),
 }
 
-impl From<HttpMessageComponentParam> for String {
-  fn from(val: HttpMessageComponentParam) -> Self {
-    match val {
-      HttpMessageComponentParam::Sf => "sf".to_string(),
-      HttpMessageComponentParam::Key(val) => format!("key=\"{val}\""),
-      HttpMessageComponentParam::Bs => "bs".to_string(),
-      HttpMessageComponentParam::Tr => "tr".to_string(),
-      HttpMessageComponentParam::Req => "req".to_string(),
-      HttpMessageComponentParam::Name(v) => format!("name=\"{v}\""),
+impl fmt::Display for HttpMessageComponentParam {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      HttpMessageComponentParam::Sf => write!(f, "sf")?,
+      HttpMessageComponentParam::Key(key) => write!(f, "key=\"{key}\"")?,
+      HttpMessageComponentParam::Bs => write!(f, "bs")?,
+      HttpMessageComponentParam::Tr => write!(f, "tr")?,
+      HttpMessageComponentParam::Req => write!(f, "req")?,
+      HttpMessageComponentParam::Name(name) => write!(f, "name=\"{name}\"")?,
     }
+    Ok(())
   }
 }
 
@@ -70,7 +73,7 @@ pub struct HttpMessageComponentParams(pub IndexSet<HttpMessageComponentParam>);
 
 impl std::hash::Hash for HttpMessageComponentParams {
   fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    let mut params = self.0.iter().map(|v| v.clone().into()).collect::<Vec<String>>();
+    let mut params = self.0.iter().map(|param| format!("{param}")).collect::<Vec<String>>();
     params.sort();
     params.hash(state);
   }
@@ -88,15 +91,10 @@ impl TryFrom<&sfv::Parameters> for HttpMessageComponentParams {
 }
 impl std::fmt::Display for HttpMessageComponentParams {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    if !self.0.is_empty() {
-      write!(
-        f,
-        ";{}",
-        self.0.iter().map(|v| v.clone().into()).collect::<Vec<String>>().join(";")
-      )
-    } else {
-      Ok(())
+    for param in self.0.iter() {
+      write!(f, ";{param}")?;
     }
+    Ok(())
   }
 }
 
