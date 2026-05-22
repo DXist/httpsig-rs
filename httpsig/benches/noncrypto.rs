@@ -54,10 +54,10 @@ fn setup_signature_input() -> (String, String, &'static [&'static str]) {
   let signature_params = HttpSignatureParams::try_from(SIGNATURE_PARAMS).unwrap();
   let signature_base = HttpSignatureBase::try_new(component_lines, signature_params).unwrap();
   let sk = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
-  let signature_headers = signature_base.build_signature_headers(&sk, Some("sig-b26")).unwrap();
+  let signature_headers = signature_base.build_signature_headers(&sk).unwrap();
   (
-    signature_headers.signature_input_header_value(),
-    signature_headers.signature_header_value(),
+    signature_headers.signature_input_header_value("sig-b26"),
+    signature_headers.signature_header_value("sig-b26"),
     COMPONENT_LINES,
   )
 }

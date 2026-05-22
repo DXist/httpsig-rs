@@ -159,9 +159,10 @@ async fn test_extract_tuples_from_request() {
   let req_or_res = RequestOrResponse::Request(&req);
   let tuples = extract_signature_headers_with_name(&req_or_res).unwrap();
   assert_eq!(tuples.len(), 1);
-  assert_eq!(tuples.get("sig11").unwrap().signature_name(), "sig11");
+  let (signature_name, headers) = tuples.into_iter().next().expect("not empty");
+  assert_eq!(signature_name, "sig11");
   assert_eq!(
-    tuples.get("sig11").unwrap().signature_params().to_string(),
+    headers.signature_params().to_string(),
     r##"("@method" "@authority");created=1704972031"##
   );
 }
@@ -238,7 +239,8 @@ async fn test_set_verify_with_signature_name() {
   let req_or_res = RequestOrResponse::Request(&req);
   let signature_headers_map = extract_signature_headers_with_name(&req_or_res).unwrap();
   assert_eq!(signature_headers_map.len(), 1);
-  assert_eq!(signature_headers_map[0].signature_name(), "custom_sig_name");
+  let sig_name = signature_headers_map.keys().next().expect("not empty");
+  assert_eq!(sig_name, "custom_sig_name");
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
   let verification_res = req.verify_message_signature(&public_key, None).await;

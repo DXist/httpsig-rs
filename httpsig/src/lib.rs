@@ -142,9 +142,9 @@ Signature: sig-b26=:wqcAqbmYJ2ji2glfAMaRy4gruYYnx2nEFN2HN6jrnDnQCK1u02Gb04v9EDgw
     let signature_params = HttpSignatureParams::try_from(SIGNATURE_PARAMS).unwrap();
     let signature_base = HttpSignatureBase::try_new(component_lines.clone(), signature_params).unwrap();
     let sk = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
-    let signature_headers = signature_base.build_signature_headers(&sk, Some("sig-b26")).unwrap();
-    let signature_params_header_string = signature_headers.signature_input_header_value();
-    let signature_header_string = signature_headers.signature_header_value();
+    let signature_headers = signature_base.build_signature_headers(&sk).unwrap();
+    let signature_params_header_string = signature_headers.signature_input_header_value("sig-b26");
+    let signature_header_string = signature_headers.signature_header_value("sig-b26");
 
     assert_eq!(signature_params_header_string, format!("sig-b26={}", SIGNATURE_PARAMS));
     assert!(signature_header_string.starts_with("sig-b26=:") && signature_header_string.ends_with(':'));

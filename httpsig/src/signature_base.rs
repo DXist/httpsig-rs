@@ -13,14 +13,9 @@ use sfv::{BareItem, Item, ListEntry, Parser};
 /// IndexMap of signature name and HttpSignatureHeaders
 pub type HttpSignatureHeadersMap = IndexMap<String, HttpSignatureHeaders, FxBuildHasher>;
 
-/// Default signature name used to indicate signature in http header (`signature` and `signature-input`)
-const DEFAULT_SIGNATURE_NAME: &str = "sig";
-
 #[derive(Debug, Clone)]
 /// Signature Headers derived from HttpSignatureBase
 pub struct HttpSignatureHeaders {
-  /// signature name coupling signature with signature input
-  signature_name: String,
   /// Signature value of "Signature" http header in the form of "<signature_name>=:<base64_signature>:"
   signature: HttpSignature,
   /// signature-params value of "Signature-Input" http header in the form of "<signature_name>=:<signature_params>:"
@@ -87,9 +82,8 @@ impl HttpSignatureHeaders {
         let signature = HttpSignature(signature_bytes);
 
         Ok((
-          signature_name.clone(),
+          signature_name,
           Self {
-            signature_name,
             signature,
             signature_params,
           },
@@ -97,11 +91,6 @@ impl HttpSignatureHeaders {
       })
       .collect::<Result<HttpSignatureHeadersMap, _>>()?;
     Ok(res)
-  }
-
-  /// Returns the signature name
-  pub fn signature_name(&self) -> &str {
-    &self.signature_name
   }
 
   /// Returns the signature value without name
@@ -120,12 +109,12 @@ impl HttpSignatureHeaders {
   }
 
   /// Returns the signature value of "Signature" http header in the form of "<signature_name>=:<base64_signature>:"
-  pub fn signature_header_value(&self) -> String {
-    format!("{}=:{}:", self.signature_name, self.signature)
+  pub fn signature_header_value(&self, signature_name: &str) -> String {
+    format!("{}=:{}:", signature_name, self.signature)
   }
   /// Returns the signature input value of "Signature-Input" http header in the form of "<signature_name>=<signature_params>"
-  pub fn signature_input_header_value(&self) -> String {
-    format!("{}={}", self.signature_name, self.signature_params)
+  pub fn signature_input_header_value(&self, signature_name: &str) -> String {
+    format!("{}={}", signature_name, self.signature_params)
   }
 }
 
@@ -190,16 +179,11 @@ impl HttpSignatureBase {
   }
 
   /// Build the signature and signature-input headers structs
-  pub fn build_signature_headers(
-    &self,
-    signing_key: &impl SigningKey,
-    signature_name: Option<&str>,
-  ) -> HttpSigResult<HttpSignatureHeaders> {
+  pub fn build_signature_headers(self, signing_key: &impl SigningKey) -> HttpSigResult<HttpSignatureHeaders> {
     let signature = self.build_raw_signature(signing_key)?;
     Ok(HttpSignatureHeaders {
-      signature_name: signature_name.unwrap_or(DEFAULT_SIGNATURE_NAME).to_string(),
       signature: HttpSignature(signature),
-      signature_params: self.signature_params.clone(),
+      signature_params: self.signature_params,
     })
   }
 
@@ -288,15 +272,15 @@ mod test {
     const SIGNATURE_INPUT: &str = r##"sig-b26=("date" "@method" "@path" "@authority" "content-type" "content-length");created=1618884473;keyid="test-key-ed25519", sig-b27=("date" "@method" "@path" "@authority" "content-type" "content-length");created=1618884473;keyid="test-key-ed25519-alt""##;
     const SIGNATURE: &str = r##"sig-b26=:wqcAqbmYJ2ji2glfAMaRy4gruYYnx2nEFN2HN6jrnDnQCK1u02Gb04v9EDgwUPiu4A0w6vuQv5lIp5WPpBKRCw==:, sig-b27=:wqcAqbmYJ2ji2glfAMaRy4gruYYnx2nEFN2HN6jrnDnQCK1u02Gb04v9EDgwUPiu4A0w6vuQv5lIp5WPpBKRCw==:"##;
 
-    let header_map = HttpSignatureHeaders::try_parse(SIGNATURE, SIGNATURE_INPUT).unwrap();
+    let mut header_map = HttpSignatureHeaders::try_parse(SIGNATURE, SIGNATURE_INPUT).unwrap();
     assert!(header_map.len() == 2);
-    let http_signature_headers = header_map.get("sig-b26").unwrap();
+    let http_signature_headers = header_map.swap_remove("sig-b26").unwrap();
     assert_eq!(
-      http_signature_headers.signature_header_value(),
+      http_signature_headers.signature_header_value("sig-b26"),
       SIGNATURE.split(',').next().unwrap()
     );
     assert_eq!(
-      http_signature_headers.signature_input_header_value(),
+      http_signature_headers.signature_input_header_value("sig-b26"),
       SIGNATURE_INPUT.split(',').next().unwrap()
     );
   }

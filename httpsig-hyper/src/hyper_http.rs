@@ -254,6 +254,9 @@ where
   }
 }
 
+/// Default signature name used to indicate signature in http header (`signature` and `signature-input`)
+const DEFAULT_SIGNATURE_NAME: &str = "sig";
+
 impl<D> MessageSignatureReq for Request<D>
 where
   D: Send + Body + Sync,
@@ -289,21 +292,21 @@ where
         build_signature_base(&req_or_res, params, None as Option<&Request<()>>).map(|base| (base, key, name))
       })
       .collect::<Result<Vec<_>, _>>()?;
-    let vec_signature_headers = futures::future::join_all(
-      vec_signature_bases
-        .into_iter()
-        .map(|(base, key, name)| async move { base.build_signature_headers(key, name) }),
-    )
+    let vec_signature_headers = futures::future::join_all(vec_signature_bases.into_iter().map(|(base, key, name)| async move {
+      base
+        .build_signature_headers(key)
+        .map(|headers| (name.unwrap_or(DEFAULT_SIGNATURE_NAME), headers))
+    }))
     .await
     .into_iter()
     .collect::<Result<Vec<_>, _>>()?;
-    vec_signature_headers.iter().try_for_each(|headers| {
+    vec_signature_headers.iter().try_for_each(|(name, headers)| {
       self
         .headers_mut()
-        .append("signature-input", headers.signature_input_header_value().parse()?);
+        .append("signature-input", headers.signature_input_header_value(name).parse()?);
       self
         .headers_mut()
-        .append("signature", headers.signature_header_value().parse()?);
+        .append("signature", headers.signature_header_value(name).parse()?);
       Ok(()) as Result<(), HyperSigError>
     })
   }
@@ -413,22 +416,22 @@ where
       .into_iter()
       .map(|(params, key, name)| build_signature_base(&req_or_res, params, req_for_param).map(|base| (base, key, name)))
       .collect::<Result<Vec<_>, _>>()?;
-    let vec_signature_headers = futures::future::join_all(
-      vec_signature_bases
-        .into_iter()
-        .map(|(base, key, name)| async move { base.build_signature_headers(key, name) }),
-    )
+    let vec_signature_headers = futures::future::join_all(vec_signature_bases.into_iter().map(|(base, key, name)| async move {
+      base
+        .build_signature_headers(key)
+        .map(|headers| (name.unwrap_or(DEFAULT_SIGNATURE_NAME), headers))
+    }))
     .await
     .into_iter()
     .collect::<Result<Vec<_>, _>>()?;
 
-    vec_signature_headers.iter().try_for_each(|headers| {
+    vec_signature_headers.iter().try_for_each(|(name, headers)| {
       self
         .headers_mut()
-        .append("signature-input", headers.signature_input_header_value().parse()?);
+        .append("signature-input", headers.signature_input_header_value(name).parse()?);
       self
         .headers_mut()
-        .append("signature", headers.signature_header_value().parse()?);
+        .append("signature", headers.signature_header_value(name).parse()?);
       Ok(()) as Result<(), HyperSigError>
     })
   }
