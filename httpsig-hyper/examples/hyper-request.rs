@@ -48,7 +48,7 @@ async fn sender_ed25519(req: &mut Request<BoxBody>) {
 
   // set signature with custom signature name
   req
-    .set_message_signature(&signature_params, &secret_key, Some("siged25519"))
+    .set_message_signature(signature_params, &secret_key, Some("siged25519"))
     .await
     .unwrap();
 }
@@ -70,7 +70,7 @@ async fn sender_hs256(req: &mut Request<BoxBody>) {
   signature_params.set_random_nonce();
 
   req
-    .set_message_signature(&signature_params, &shared_key, Some("sighs256"))
+    .set_message_signature(signature_params, &shared_key, Some("sighs256"))
     .await
     .unwrap();
 }

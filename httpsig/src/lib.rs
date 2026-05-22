@@ -122,7 +122,7 @@ Signature: sig-b26=:wqcAqbmYJ2ji2glfAMaRy4gruYYnx2nEFN2HN6jrnDnQCK1u02Gb04v9EDgw
       .map(|&line| message_component::HttpMessageComponent::try_from(line).unwrap())
       .collect::<Vec<_>>();
 
-    let signature_base = HttpSignatureBase::try_new(component_lines, &signature_params).unwrap();
+    let signature_base = HttpSignatureBase::try_new(component_lines, signature_params).unwrap();
     let sk = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
     let pk = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
 
@@ -140,7 +140,7 @@ Signature: sig-b26=:wqcAqbmYJ2ji2glfAMaRy4gruYYnx2nEFN2HN6jrnDnQCK1u02Gb04v9EDgw
 
     // sender
     let signature_params = HttpSignatureParams::try_from(SIGNATURE_PARAMS).unwrap();
-    let signature_base = HttpSignatureBase::try_new(component_lines.clone(), &signature_params).unwrap();
+    let signature_base = HttpSignatureBase::try_new(component_lines.clone(), signature_params).unwrap();
     let sk = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
     let signature_headers = signature_base.build_signature_headers(&sk, Some("sig-b26")).unwrap();
     let signature_params_header_string = signature_headers.signature_input_header_value();
@@ -150,12 +150,12 @@ Signature: sig-b26=:wqcAqbmYJ2ji2glfAMaRy4gruYYnx2nEFN2HN6jrnDnQCK1u02Gb04v9EDgw
     assert!(signature_header_string.starts_with("sig-b26=:") && signature_header_string.ends_with(':'));
 
     // receiver
-    let header_map = HttpSignatureHeaders::try_parse(&signature_header_string, &signature_params_header_string).unwrap();
-    let received_signature_headers = header_map.get("sig-b26").unwrap();
-    let received_signature_base =
-      HttpSignatureBase::try_new(component_lines, received_signature_headers.signature_params()).unwrap();
+    let mut header_map = HttpSignatureHeaders::try_parse(&signature_header_string, &signature_params_header_string).unwrap();
+    let received_signature_headers = header_map.swap_remove("sig-b26").unwrap();
+    let (signature, params) = received_signature_headers.into_signature_and_params();
+    let received_signature_base = HttpSignatureBase::try_new(component_lines, params).unwrap();
     let pk = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-    let verification_result = received_signature_base.verify_signature_headers(&pk, received_signature_headers);
+    let verification_result = received_signature_base.verify_signature(&pk, &signature);
     assert!(verification_result.is_ok());
   }
 }

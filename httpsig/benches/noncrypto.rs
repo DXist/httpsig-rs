@@ -24,17 +24,17 @@ fn construct_signature_base(signature_params: &str, component_lines: &[&str]) ->
     .iter()
     .map(|&line| HttpMessageComponent::try_from(line).unwrap())
     .collect::<Vec<_>>();
-  HttpSignatureBase::try_new(component_lines, &signature_params).unwrap()
+  HttpSignatureBase::try_new(component_lines, signature_params).unwrap()
 }
 
 fn parse_signature_base(signature_input_header: &str, signature_header: &str, component_lines: &[&str]) -> HttpSignatureBase {
-  let header_map = HttpSignatureHeaders::try_parse(signature_header, signature_input_header).unwrap();
-  let received_signature_headers = header_map.get("sig-b26").unwrap();
+  let mut header_map = HttpSignatureHeaders::try_parse(signature_header, signature_input_header).unwrap();
+  let received_signature_headers = header_map.swap_remove("sig-b26").unwrap();
   let component_lines = component_lines
     .iter()
     .map(|&line| HttpMessageComponent::try_from(line).unwrap())
     .collect::<Vec<_>>();
-  HttpSignatureBase::try_new(component_lines, received_signature_headers.signature_params()).unwrap()
+  HttpSignatureBase::try_new(component_lines, received_signature_headers.into_signature_and_params().1).unwrap()
 }
 
 /* ----------------------------------------------------------------- */
@@ -52,7 +52,7 @@ fn setup_signature_input() -> (String, String, &'static [&'static str]) {
 
   // sender
   let signature_params = HttpSignatureParams::try_from(SIGNATURE_PARAMS).unwrap();
-  let signature_base = HttpSignatureBase::try_new(component_lines, &signature_params).unwrap();
+  let signature_base = HttpSignatureBase::try_new(component_lines, signature_params).unwrap();
   let sk = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
   let signature_headers = signature_base.build_signature_headers(&sk, Some("sig-b26")).unwrap();
   (

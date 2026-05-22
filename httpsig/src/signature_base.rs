@@ -114,6 +114,11 @@ impl HttpSignatureHeaders {
     &self.signature_params
   }
 
+  /// Converts into the (signature, signature params value pair) without name for signature-input header
+  pub fn into_signature_and_params(self) -> (HttpSignature, HttpSignatureParams) {
+    (self.signature, self.signature_params)
+  }
+
   /// Returns the signature value of "Signature" http header in the form of "<signature_name>=:<base64_signature>:"
   pub fn signature_header_value(&self) -> String {
     format!("{}=:{}:", self.signature_name, self.signature)
@@ -148,7 +153,7 @@ impl HttpSignatureBase {
   /// This should not be exposed to user and not used directly.
   /// Use wrapper functions generating SignatureBase from base HTTP request and Signer itself instead when newly generating signature
   /// When verifying signature, use wrapper functions generating SignatureBase from HTTP request containing signature params itself instead.
-  pub fn try_new(component_lines: Vec<HttpMessageComponent>, signature_params: &HttpSignatureParams) -> HttpSigResult<Self> {
+  pub fn try_new(component_lines: Vec<HttpMessageComponent>, signature_params: HttpSignatureParams) -> HttpSigResult<Self> {
     // check if the order of component lines is the same as the order of covered message component ids
     if component_lines.len() != signature_params.covered_components.len() {
       return Err(HttpSigError::BuildSignatureBaseError(
@@ -168,8 +173,7 @@ impl HttpSignatureBase {
 
     Ok(Self {
       component_lines,
-      // defer clone on happy path
-      signature_params: signature_params.clone(),
+      signature_params,
     })
   }
 
@@ -200,17 +204,13 @@ impl HttpSignatureBase {
   }
 
   /// Verify the signature using the given verifying key
-  pub fn verify_signature_headers(
-    &self,
-    verifying_key: &impl VerifyingKey,
-    signature_headers: &HttpSignatureHeaders,
-  ) -> HttpSigResult<()> {
-    if signature_headers.signature_params().is_expired() {
+  pub fn verify_signature(&self, verifying_key: &impl VerifyingKey, signature: &HttpSignature) -> HttpSigResult<()> {
+    if self.signature_params.is_expired() {
       return Err(HttpSigError::ExpiredSignatureParams(
         "Signature params is expired".to_string(),
       ));
     }
-    let signature_bytes = signature_headers.signature.0.as_slice();
+    let signature_bytes = signature.0.as_slice();
     verifying_key.verify(&self.as_bytes(), signature_bytes)
   }
 
@@ -271,7 +271,7 @@ mod test {
       .map(|&s| HttpMessageComponent::try_from(s))
       .collect::<Result<Vec<_>, _>>()
       .unwrap();
-    let signature_base = HttpSignatureBase::try_new(component_lines, &signature_params).unwrap();
+    let signature_base = HttpSignatureBase::try_new(component_lines, signature_params).unwrap();
     let test_string = r##""@method": GET
 "@path": /
 "date": Tue, 07 Jun 2014 20:51:35 GMT
