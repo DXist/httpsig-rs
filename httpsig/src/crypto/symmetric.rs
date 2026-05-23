@@ -90,6 +90,12 @@ impl super::VerifyingKey for SharedKey {
   }
 }
 
+impl AsRef<SharedKey> for SharedKey {
+  fn as_ref(&self) -> &SharedKey {
+    self
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

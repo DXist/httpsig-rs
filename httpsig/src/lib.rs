@@ -23,7 +23,9 @@ pub mod prelude {
   pub use crate::{
     crypto::{AlgorithmName, PublicKey, SecretKey, SharedKey, SigningKey, VerifyingKey},
     error::{HttpSigError, HttpSigResult},
-    signature_base::{HttpSignature, HttpSignatureBase, HttpSignatureHeaders, HttpSignatureHeadersMap},
+    signature_base::{
+      HttpSignature, HttpSignatureBase, HttpSignatureBaseOperator, HttpSignatureHeaders, HttpSignatureHeadersMap,
+    },
     signature_params::HttpSignatureParams,
   };
 }
@@ -31,6 +33,8 @@ pub mod prelude {
 /* ----------------------------------------------------------------- */
 #[cfg(test)]
 mod tests {
+  use crate::signature_base::HttpSignatureBaseOperator;
+
   use super::prelude::*;
   use base64::{Engine as _, engine::general_purpose};
 
@@ -157,5 +161,47 @@ Signature: sig-b26=:wqcAqbmYJ2ji2glfAMaRy4gruYYnx2nEFN2HN6jrnDnQCK1u02Gb04v9EDgw
     let pk = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
     let verification_result = received_signature_base.verify_signature(&pk, &signature);
     assert!(verification_result.is_ok());
+  }
+
+  #[test]
+  fn test_with_operator_build_signature_api() {
+    let component_lines = COMPONENT_LINES
+      .iter()
+      .map(|&line| message_component::HttpMessageComponent::try_from(line).unwrap())
+      .collect::<Vec<_>>();
+
+    let mut operator = HttpSignatureBaseOperator::default();
+
+    // sender
+    let signature_params = HttpSignatureParams::try_from(SIGNATURE_PARAMS).unwrap();
+    let signature_base = HttpSignatureBase::try_new(component_lines.clone(), signature_params).unwrap();
+    let sk = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
+    let mut results = Vec::with_capacity(1);
+
+    operator.sign_bases([(&signature_base, &sk)], &mut results);
+    assert_eq!(results.len(), 1);
+    for result in results {
+      assert!(result.is_ok());
+    }
+
+    let mut results = Vec::with_capacity(1);
+    operator.build_signature_headers([(signature_base, sk)], &mut results);
+    assert_eq!(results.len(), 1);
+    let signature_headers = results.into_iter().next().unwrap().unwrap();
+    let signature_params_header_string = signature_headers.signature_input_header_value("sig-b26");
+    let signature_header_string = signature_headers.signature_header_value("sig-b26");
+
+    assert_eq!(signature_params_header_string, format!("sig-b26={}", SIGNATURE_PARAMS));
+    assert!(signature_header_string.starts_with("sig-b26=:") && signature_header_string.ends_with(':'));
+
+    // receiver
+    let mut header_map = HttpSignatureHeaders::try_parse(&signature_header_string, &signature_params_header_string).unwrap();
+    let received_signature_headers = header_map.swap_remove("sig-b26").unwrap();
+    let (signature, params) = received_signature_headers.into_signature_and_params();
+    let received_signature_base = HttpSignatureBase::try_new(component_lines, params).unwrap();
+    let pk = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
+
+    let maybe_valid = operator.verify_signatures([(1, &received_signature_base, &pk, &signature)]);
+    assert_eq!(maybe_valid, Some(1));
   }
 }

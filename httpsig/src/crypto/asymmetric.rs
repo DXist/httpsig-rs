@@ -222,6 +222,12 @@ impl super::SigningKey for SecretKey {
   }
 }
 
+impl AsRef<SecretKey> for SecretKey {
+  fn as_ref(&self) -> &SecretKey {
+    self
+  }
+}
+
 impl super::VerifyingKey for SecretKey {
   fn verify(&self, data: &[u8], signature: &[u8]) -> HttpSigResult<()> {
     self.public_key().verify(data, signature)
@@ -442,6 +448,12 @@ impl super::VerifyingKey for PublicKey {
       #[cfg(feature = "rsa-signature")]
       Self::RsaPssSha512(_) => AlgorithmName::RsaPssSha512,
     }
+  }
+}
+
+impl AsRef<PublicKey> for PublicKey {
+  fn as_ref(&self) -> &PublicKey {
+    self
   }
 }
 

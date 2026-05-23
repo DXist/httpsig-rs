@@ -116,14 +116,14 @@ impl HttpSignatureHeaders {
   pub fn signature_header_value(&self, signature_name: &str) -> String {
     const NON_RSA_SIGNATURE_BUFFER_SIZE: usize = 128;
     let mut buf = String::with_capacity(NON_RSA_SIGNATURE_BUFFER_SIZE);
-    write!(buf, "{}=:{}:", signature_name, self.signature).expect("no allocation error");
+    write!(buf, "{}=:{}:", signature_name, self.signature).expect("fmt::Write is infallible for String");
     buf
   }
   /// Returns the signature input value of "Signature-Input" http header in the form of "<signature_name>=<signature_params>"
   pub fn signature_input_header_value(&self, signature_name: &str) -> String {
     const TYPICAL_SIGNATURE_INPUT_BUFFER_SIZE: usize = 256;
     let mut buf = String::with_capacity(TYPICAL_SIGNATURE_INPUT_BUFFER_SIZE);
-    write!(buf, "{}={}", signature_name, self.signature_params).expect("no allocation error");
+    write!(buf, "{}={}", signature_name, self.signature_params).expect("fmt::Write is infallible for String");
     buf
   }
 }
@@ -139,6 +139,12 @@ impl fmt::Display for HttpSignature {
   }
 }
 
+impl AsRef<HttpSignature> for HttpSignature {
+  fn as_ref(&self) -> &HttpSignature {
+    self
+  }
+}
+
 /// Signature Base
 /// https://datatracker.ietf.org/doc/html/rfc9421#section-2.5
 pub struct HttpSignatureBase {
@@ -147,6 +153,8 @@ pub struct HttpSignatureBase {
   /// signature params
   signature_params: HttpSignatureParams,
 }
+
+const TYPICAL_SIGNATURE_BASE_UPPER_BOUND_SIZE: usize = 512;
 
 impl HttpSignatureBase {
   /// Creates a new signature base from component lines and signature params
@@ -179,9 +187,8 @@ impl HttpSignatureBase {
 
   /// Returns the signature base string as vector of bytes to be signed.
   pub fn to_vec(&self) -> Vec<u8> {
-    const TYPICAL_SIGNATURE_BASE_UPPER_BOUND_SIZE: usize = 512;
     let mut buf = Vec::with_capacity(TYPICAL_SIGNATURE_BASE_UPPER_BOUND_SIZE);
-    write!(buf, "{}", self).expect("no allocation error");
+    write!(buf, "{}", self).expect("std::io::Write is infallible for Vec");
     buf
   }
 
@@ -240,6 +247,91 @@ impl fmt::Display for HttpSignatureBase {
     }
     // no final newline according to the [Signature Base algorithm](https://www.rfc-editor.org/rfc/rfc9421#section-2.5)
     write!(f, "\"@signature-params\": {}", self.signature_params)
+  }
+}
+
+impl AsRef<HttpSignatureBase> for HttpSignatureBase {
+  fn as_ref(&self) -> &HttpSignatureBase {
+    self
+  }
+}
+
+/// Signer and verifier of signature bases.
+pub struct HttpSignatureBaseOperator {
+  buf: Vec<u8>,
+}
+
+impl Default for HttpSignatureBaseOperator {
+  fn default() -> Self {
+    Self {
+      buf: Vec::with_capacity(TYPICAL_SIGNATURE_BASE_UPPER_BOUND_SIZE),
+    }
+  }
+}
+
+impl HttpSignatureBaseOperator {
+  /// Sign the provided signature bases by the corresponding signing key for each pair.
+  ///
+  /// Output raw signature results into the `output` collection.
+  pub fn sign_bases<I, B, S, K, O>(&mut self, signature_base_keys: I, output: &mut O)
+  where
+    I: IntoIterator<Item = (B, S)>,
+    B: AsRef<HttpSignatureBase>,
+    S: AsRef<K>,
+    K: SigningKey,
+    O: Extend<HttpSigResult<Vec<u8>>>,
+  {
+    output.extend(signature_base_keys.into_iter().map(|(base, signing_key)| {
+      self.buf.clear();
+      write!(self.buf, "{}", base.as_ref()).expect("std::io::Write is infallible for Vec");
+      signing_key.as_ref().sign(&self.buf)
+    }))
+  }
+
+  /// Sign the provided signature bases by the corresponding signing key for each pair.
+  ///
+  /// Build [`HttpSignatureHeaders`] for each signature into the `output` collection.
+  pub fn build_signature_headers<I, S, K, O>(&mut self, signature_base_keys: I, output: &mut O)
+  where
+    I: IntoIterator<Item = (HttpSignatureBase, S)>,
+    S: AsRef<K>,
+    K: SigningKey,
+    O: Extend<HttpSigResult<HttpSignatureHeaders>>,
+  {
+    output.extend(signature_base_keys.into_iter().map(|(base, signing_key)| {
+      self.buf.clear();
+      write!(self.buf, "{}", base).expect("std::io::Write is infallible for Vec");
+      signing_key.as_ref().sign(&self.buf).map(|signature| HttpSignatureHeaders {
+        signature: HttpSignature(signature),
+        signature_params: base.signature_params,
+      })
+    }))
+  }
+
+  /// Verify the provided signature bases with the corresponding verifying key and signature for each tuple.
+  ///
+  /// Returns input identifier `N` of the first valid signature or None if no signatures are valid.
+  pub fn verify_signatures<I, N, B, V, K, S>(&mut self, id_base_key_signatures: I) -> Option<N>
+  where
+    I: IntoIterator<Item = (N, B, V, S)>,
+    B: AsRef<HttpSignatureBase>,
+    V: AsRef<K>,
+    K: VerifyingKey,
+    S: AsRef<HttpSignature>,
+  {
+    id_base_key_signatures
+      .into_iter()
+      .find_map(|(id, base, verifying_key, signature)| {
+        let base = base.as_ref();
+        if base.signature_params.is_expired() {
+          None
+        } else {
+          self.buf.clear();
+          write!(self.buf, "{}", base).expect("std::io::Write is infallible for Vec");
+          let signature_bytes = signature.as_ref().0.as_slice();
+          verifying_key.as_ref().verify(&self.buf, signature_bytes).ok().map(|_| id)
+        }
+      })
   }
 }
 

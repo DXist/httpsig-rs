@@ -323,8 +323,8 @@ async fn test_set_verify_multiple_signatures() {
   signature_params_hmac.set_key_info(&secret_key_p256);
 
   let params_key_name = [
-    (signature_params_eddsa, &secret_key_eddsa, Some("eddsa_sig")),
-    (signature_params_hmac, &secret_key_p256, Some("p256_sig")),
+    (signature_params_eddsa, &secret_key_eddsa, "eddsa_sig"),
+    (signature_params_hmac, &secret_key_p256, "p256_sig"),
   ];
 
   req.set_message_signatures(params_key_name).unwrap();
