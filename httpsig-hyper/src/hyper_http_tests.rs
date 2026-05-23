@@ -346,78 +346,6 @@ async fn test_set_verify_multiple_signatures() {
   assert!(verification_res[1].as_ref().unwrap() == "p256_sig");
 }
 
-// ---- Blocking (sync) ----
-
-#[cfg(feature = "blocking")]
-#[test]
-fn test_blocking_set_verify_message_signature_req() {
-  let mut req = futures::executor::block_on(build_request());
-  let secret_key = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
-  let mut signature_params = HttpSignatureParams::try_new(&build_covered_components_req()).unwrap();
-  signature_params.set_key_info(&secret_key);
-
-  req.set_message_signature_sync(signature_params, &secret_key, None).unwrap();
-
-  let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = req.verify_message_signature_sync(&public_key, None);
-  assert!(verification_res.is_ok());
-}
-
-#[cfg(feature = "blocking")]
-#[test]
-fn test_blocking_set_verify_message_signature_res() {
-  let req = futures::executor::block_on(build_request());
-  let mut res = futures::executor::block_on(build_response());
-  let secret_key = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
-  let mut signature_params = HttpSignatureParams::try_new(&build_covered_components_res()).unwrap();
-  signature_params.set_key_info(&secret_key);
-  res
-    .set_message_signature_sync(signature_params, &secret_key, None, Some(&req))
-    .unwrap();
-
-  let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = res.verify_message_signature_sync(&public_key, None, Some(&req));
-  assert!(verification_res.is_ok());
-}
-
-// ---- Issue #17: @query-param;name="..." ----
-
-/// Regression test for issue #17: @query-param;name="id" must produce signature headers (sync)
-#[cfg(feature = "blocking")]
-#[test]
-fn test_query_param_sign_verify_sync() {
-  let mut req = build_query_request();
-
-  let covered = ["@method", "\"@query-param\";name=\"id\"", "date"];
-  let covered_components = covered
-    .iter()
-    .map(|v| HttpMessageComponentId::try_from(*v))
-    .collect::<Result<Vec<_>, _>>()
-    .unwrap();
-
-  let secret_key = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
-  let mut signature_params = HttpSignatureParams::try_new(&covered_components).unwrap();
-  signature_params.set_key_info(&secret_key);
-
-  req
-    .set_message_signature_sync(signature_params, &secret_key, Some("qp"))
-    .unwrap();
-
-  assert!(
-    req.headers().get("signature-input").is_some(),
-    "signature-input header is missing"
-  );
-  assert!(req.headers().get("signature").is_some(), "signature header is missing");
-
-  let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = req.verify_message_signature_sync(&public_key, None);
-  assert!(
-    verification_res.is_ok(),
-    "signature verification failed: {:?}",
-    verification_res.err()
-  );
-}
-
 /// Regression test for issue #17: @query-param;name="id" must produce signature headers (async)
 #[tokio::test]
 async fn test_query_param_sign_verify_async() {
@@ -494,26 +422,6 @@ async fn test_set_message_signature_propagates_build_error() {
   signature_params.set_key_info(&secret_key);
 
   let result = req.set_message_signature(signature_params, &secret_key, None as Option<&str>);
-  assert!(result.is_err(), "expected Err when using `@status` on request, got Ok");
-}
-
-#[cfg(feature = "blocking")]
-#[test]
-fn test_set_message_signature_sync_propagates_build_error() {
-  // Same as above but for sync path
-  let body = Full::new(bytes::Bytes::new()).map_err(|never| match never {}).boxed();
-  let mut req: Request<BoxBody> = Request::builder()
-    .method("GET")
-    .uri("https://example.com/")
-    .body(body)
-    .unwrap();
-
-  let covered = vec![HttpMessageComponentId::try_from("@status").unwrap()];
-  let secret_key = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
-  let mut signature_params = HttpSignatureParams::try_new(&covered).unwrap();
-  signature_params.set_key_info(&secret_key);
-
-  let result = req.set_message_signature_sync(signature_params, &secret_key, None);
   assert!(result.is_err(), "expected Err when using `@status` on request, got Ok");
 }
 

@@ -4,21 +4,14 @@
 //! This crate extends hyper's http request and response messages with the ability to generate and verify HTTP signatures.
 //! Additionally it also provides a way to set and verify content-digest header.
 //!
-//! ## Async-first design
+//! ## Offload-friendly design
 //!
-//! The primary API is fully async, allowing concurrent processing of multiple signatures via
-//! [`MessageSignatureReq`] and [`MessageSignatureRes`].
+//! Sign/verify operations could be offloaded to a dedicated thread pool for CPU-bound tasks.
+//! See [`httpsig::HttpSignatureBaseOperator`].
 //!
-//! ## Blocking API
+//! ## Convenience API
 //!
-//! When the `blocking` feature is enabled (on by default), synchronous wrappers are provided via
-//! [`MessageSignatureReqSync`] and [`MessageSignatureResSync`]. These use `futures::executor::block_on`
-//! internally and are intended **exclusively for non-async contexts**.
-//!
-//! # Panics
-//!
-//! Calling any `*_sync` method from within an async runtime (e.g. inside a `tokio::spawn` task)
-//! will panic. If you are already in an async context, use the async methods directly.
+//! If offloading is not needed [`MessageSignatureReq`] and [`MessageSignatureRes`] traits allow to sign and verify requests in the same thread.
 
 mod error;
 mod hyper_content_digest;
@@ -58,9 +51,7 @@ impl std::str::FromStr for ContentDigestType {
 pub use error::{HyperDigestError, HyperDigestResult, HyperSigError, HyperSigResult};
 pub use httpsig::prelude;
 pub use hyper_content_digest::{ContentDigest, RequestContentDigest, ResponseContentDigest};
-pub use hyper_http::{
-  MessageSignature, MessageSignatureReq, MessageSignatureReqSync, MessageSignatureRes, MessageSignatureResSync,
-};
+pub use hyper_http::{MessageSignature, MessageSignatureReq, MessageSignatureRes};
 
 /* ----------------------------------------------------------------- */
 #[cfg(test)]
@@ -203,55 +194,5 @@ MCowBQYDK2VwAyEA1ixMQcxO46PLlgQfYS46ivFd+n0CcDHSKUnuhm3i1O0=
 
     let verification_res = res.verify_message_signature(&public_key, Some("NotFoundKeyId"), Some(&req));
     assert!(verification_res.is_err());
-  }
-
-  #[cfg(feature = "blocking")]
-  #[test]
-  fn test_set_verify_request_sync() {
-    // show usage of set_message_signature_sync and verify_message_signature_sync
-
-    let mut req = futures::executor::block_on(build_request());
-    let secret_key = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
-    let covered_components = COVERED_COMPONENTS_REQ
-      .iter()
-      .map(|v| message_component::HttpMessageComponentId::try_from(*v))
-      .collect::<Result<Vec<_>, _>>()
-      .unwrap();
-    let mut signature_params = HttpSignatureParams::try_new(&covered_components).unwrap();
-    // set key information, alg and keyid
-    signature_params.set_key_info(&secret_key);
-    // set signature
-    req.set_message_signature_sync(signature_params, &secret_key, None).unwrap();
-
-    let (alg, _key_id) = req.get_alg_key_ids().unwrap().into_iter().next().unwrap().1;
-    let public_key = PublicKey::from_pem(&alg.unwrap(), EDDSA_PUBLIC_KEY).unwrap();
-    let verification_res = req.verify_message_signature_sync(&public_key, None);
-    assert!(verification_res.is_ok());
-  }
-
-  #[cfg(feature = "blocking")]
-  #[test]
-  fn test_set_verify_response_sync() {
-    // show usage of set_message_signature_sync and verify_message_signature_sync
-    let req = futures::executor::block_on(build_request());
-    let mut res = futures::executor::block_on(build_response());
-    let secret_key = SecretKey::from_pem(&AlgorithmName::Ed25519, EDDSA_SECRET_KEY).unwrap();
-    let covered_components = COVERED_COMPONENTS_RES
-      .iter()
-      .map(|v| message_component::HttpMessageComponentId::try_from(*v))
-      .collect::<Result<Vec<_>, _>>()
-      .unwrap();
-    let mut signature_params = HttpSignatureParams::try_new(&covered_components).unwrap();
-    // set key information, alg and keyid
-    signature_params.set_key_info(&secret_key);
-    // set signature
-    res
-      .set_message_signature_sync(signature_params, &secret_key, None, Some(&req))
-      .unwrap();
-
-    let (alg, _key_id) = res.get_alg_key_ids().unwrap().into_iter().next().unwrap().1;
-    let public_key = PublicKey::from_pem(&alg.unwrap(), EDDSA_PUBLIC_KEY).unwrap();
-    let verification_res = res.verify_message_signature_sync(&public_key, None, Some(&req));
-    assert!(verification_res.is_ok());
   }
 }
