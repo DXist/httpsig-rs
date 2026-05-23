@@ -22,10 +22,6 @@ httpsig = { path = "../httpsig", version = "0.0.24" }
 
 thiserror = { version = "2.0.18" }
 tracing = { version = "0.1.44" }
-futures = { version = "0.3.31", default-features = false, features = [
-  "std",
-  "async-await",
-] }
 indexmap = { version = "2.11.4" }
 subtle = { version = "2.6.1", default-features = false }
 
@@ -48,6 +44,9 @@ tokio = { version = "1.49.0", default-features = false, features = [
   "macros",
   "rt-multi-thread",
 ] } # testing only
+futures = { version = "0.3.31", default-features = false, features = [
+  "executor",
+] }
 criterion = "0.8"
 
 [[bench]]
