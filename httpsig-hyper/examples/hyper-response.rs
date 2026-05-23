@@ -61,7 +61,6 @@ async fn sender_ed25519(res: &mut Response<BoxBody>, received_req: &Request<BoxB
   // set signature with custom signature name
   res
     .set_message_signature(signature_params, &secret_key, Some("siged25519"), Some(received_req))
-    .await
     .unwrap();
 }
 
@@ -83,7 +82,6 @@ async fn sender_hs256(res: &mut Response<BoxBody>, received_req: &Request<BoxBod
 
   res
     .set_message_signature(signature_params, &shared_key, Some("sighs256"), Some(received_req))
-    .await
     .unwrap();
 }
 
@@ -97,7 +95,7 @@ where
   let key_id = public_key.key_id();
 
   // verify signature with checking key_id
-  res.verify_message_signature(&public_key, Some(&key_id), Some(sent_req)).await
+  res.verify_message_signature(&public_key, Some(&key_id), Some(sent_req))
 }
 
 /// Receiver function that verifies a request with a signature of hmac-sha256
@@ -110,7 +108,7 @@ where
   let key_id = VerifyingKey::key_id(&shared_key);
 
   // verify signature with checking key_id
-  res.verify_message_signature(&shared_key, Some(&key_id), Some(sent_req)).await
+  res.verify_message_signature(&shared_key, Some(&key_id), Some(sent_req))
 }
 
 async fn scenario_multiple_signatures() {

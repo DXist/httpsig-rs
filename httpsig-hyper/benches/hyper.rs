@@ -48,8 +48,8 @@ fn setup_sign_verify() -> (Request<BoxBody>, SharedKey, HttpSignatureParams) {
 }
 
 fn sign_verify(req: &mut Request<BoxBody>, shared_key: &SharedKey, signature_params: HttpSignatureParams) {
-  futures::executor::block_on(req.set_message_signature(signature_params, shared_key, None)).unwrap();
-  futures::executor::block_on(req.verify_message_signature(shared_key, None)).unwrap();
+  req.set_message_signature(signature_params, shared_key, None).unwrap();
+  req.verify_message_signature(shared_key, None).unwrap();
 }
 
 fn bench_sign_verify(c: &mut Criterion) {

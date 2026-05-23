@@ -137,7 +137,6 @@ MCowBQYDK2VwAyEA1ixMQcxO46PLlgQfYS46ivFd+n0CcDHSKUnuhm3i1O0=
     // set custom signature name
     req
       .set_message_signature(signature_params, &secret_key, Some("custom_sig_name"))
-      .await
       .unwrap();
     let signature_input = req.headers().get("signature-input").unwrap().to_str().unwrap();
     let signature = req.headers().get("signature").unwrap().to_str().unwrap();
@@ -148,15 +147,15 @@ MCowBQYDK2VwAyEA1ixMQcxO46PLlgQfYS46ivFd+n0CcDHSKUnuhm3i1O0=
     // get algorithm from signature params
     let (alg, _key_id) = req.get_alg_key_ids().unwrap().into_iter().next().unwrap().1;
     let public_key = PublicKey::from_pem(&alg.unwrap(), EDDSA_PUBLIC_KEY).unwrap();
-    let verification_res = req.verify_message_signature(&public_key, None).await;
+    let verification_res = req.verify_message_signature(&public_key, None);
     assert!(verification_res.is_ok());
 
     // verify with checking key_id
     let key_id = public_key.key_id();
-    let verification_res = req.verify_message_signature(&public_key, Some(&key_id)).await;
+    let verification_res = req.verify_message_signature(&public_key, Some(&key_id));
     assert!(verification_res.is_ok());
 
-    let verification_res = req.verify_message_signature(&public_key, Some("NotFoundKeyId")).await;
+    let verification_res = req.verify_message_signature(&public_key, Some("NotFoundKeyId"));
     assert!(verification_res.is_err());
   }
 
@@ -182,7 +181,6 @@ MCowBQYDK2VwAyEA1ixMQcxO46PLlgQfYS46ivFd+n0CcDHSKUnuhm3i1O0=
     // set custom signature name, and `req` field param if needed (e.g., request method, uri, content-digest, etc.) included only in response
     res
       .set_message_signature(signature_params, &secret_key, Some("custom_sig_name"), Some(&req))
-      .await
       .unwrap();
     let signature_input = res.headers().get("signature-input").unwrap().to_str().unwrap();
     let signature = res.headers().get("signature").unwrap().to_str().unwrap();
@@ -193,21 +191,17 @@ MCowBQYDK2VwAyEA1ixMQcxO46PLlgQfYS46ivFd+n0CcDHSKUnuhm3i1O0=
     // get algorithm from signature params
     let (alg, _key_id) = res.get_alg_key_ids().unwrap().into_iter().next().unwrap().1;
     let public_key = PublicKey::from_pem(&alg.unwrap(), EDDSA_PUBLIC_KEY).unwrap();
-    let verification_res = res.verify_message_signature(&public_key, None, Some(&req)).await;
+    let verification_res = res.verify_message_signature(&public_key, None, Some(&req));
     assert!(verification_res.is_ok());
-    let verification_res = res
-      .verify_message_signature(&public_key, None, None as Option<&Request<()>>)
-      .await;
+    let verification_res = res.verify_message_signature(&public_key, None, None as Option<&Request<()>>);
     assert!(verification_res.is_err());
 
     // verify with checking key_id
     let key_id = public_key.key_id();
-    let verification_res = res.verify_message_signature(&public_key, Some(&key_id), Some(&req)).await;
+    let verification_res = res.verify_message_signature(&public_key, Some(&key_id), Some(&req));
     assert!(verification_res.is_ok());
 
-    let verification_res = res
-      .verify_message_signature(&public_key, Some("NotFoundKeyId"), Some(&req))
-      .await;
+    let verification_res = res.verify_message_signature(&public_key, Some("NotFoundKeyId"), Some(&req));
     assert!(verification_res.is_err());
   }
 

@@ -172,12 +172,12 @@ async fn test_set_verify_message_signature_req() {
   let mut signature_params = HttpSignatureParams::try_new(&build_covered_components_req()).unwrap();
   signature_params.set_key_info(&secret_key);
 
-  req.set_message_signature(signature_params, &secret_key, None).await.unwrap();
+  req.set_message_signature(signature_params, &secret_key, None).unwrap();
   let signature_input = req.headers().get("signature-input").unwrap().to_str().unwrap();
   assert!(signature_input.starts_with(r##"sig=("@method" "date" "content-type" "content-digest")"##));
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = req.verify_message_signature(&public_key, None).await;
+  let verification_res = req.verify_message_signature(&public_key, None);
   assert!(verification_res.is_ok());
 }
 
@@ -193,13 +193,12 @@ async fn test_set_verify_message_signature_res() {
 
   res
     .set_message_signature(signature_params, &secret_key, None, Some(&req))
-    .await
     .unwrap();
   let signature_input = res.headers().get("signature-input").unwrap().to_str().unwrap();
   assert!(signature_input.starts_with(r##"sig=("@status" "@method";req "date" "content-type" "content-digest";req)"##));
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = res.verify_message_signature(&public_key, None, Some(&req)).await;
+  let verification_res = res.verify_message_signature(&public_key, None, Some(&req));
   assert!(verification_res.is_ok());
 }
 
@@ -213,10 +212,10 @@ async fn test_expired_signature() {
   signature_params.set_expires(created - 1);
   assert!(signature_params.is_expired());
 
-  req.set_message_signature(signature_params, &secret_key, None).await.unwrap();
+  req.set_message_signature(signature_params, &secret_key, None).unwrap();
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = req.verify_message_signature(&public_key, None).await;
+  let verification_res = req.verify_message_signature(&public_key, None);
   assert!(verification_res.is_err());
 }
 
@@ -229,7 +228,6 @@ async fn test_set_verify_with_signature_name() {
 
   req
     .set_message_signature(signature_params, &secret_key, Some("custom_sig_name"))
-    .await
     .unwrap();
 
   let signature_headers_map = extract_signature_headers_with_name(&req).unwrap();
@@ -238,7 +236,7 @@ async fn test_set_verify_with_signature_name() {
   assert_eq!(sig_name, "custom_sig_name");
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = req.verify_message_signature(&public_key, None).await;
+  let verification_res = req.verify_message_signature(&public_key, None);
   assert!(verification_res.is_ok());
 }
 
@@ -249,14 +247,14 @@ async fn test_set_verify_with_key_id() {
   let mut signature_params = HttpSignatureParams::try_new(&build_covered_components_req()).unwrap();
   signature_params.set_key_info(&secret_key);
 
-  req.set_message_signature(signature_params, &secret_key, None).await.unwrap();
+  req.set_message_signature(signature_params, &secret_key, None).unwrap();
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
   let key_id = public_key.key_id();
-  let verification_res = req.verify_message_signature(&public_key, Some(&key_id)).await;
+  let verification_res = req.verify_message_signature(&public_key, Some(&key_id));
   assert!(verification_res.is_ok());
 
-  let verification_res = req.verify_message_signature(&public_key, Some("NotFoundKeyId")).await;
+  let verification_res = req.verify_message_signature(&public_key, Some("NotFoundKeyId"));
   assert!(verification_res.is_err());
 }
 
@@ -272,7 +270,7 @@ async fn test_set_verify_with_key_id_hmac_sha256() {
   // Random nonce is highly recommended for HMAC
   signature_params.set_random_nonce();
 
-  req.set_message_signature(signature_params, &secret_key, None).await.unwrap();
+  req.set_message_signature(signature_params, &secret_key, None).unwrap();
 
   let org_key_id = VerifyingKey::key_id(&secret_key);
   let (alg, key_id) = req.get_alg_key_ids().unwrap().into_iter().next().unwrap().1;
@@ -280,10 +278,10 @@ async fn test_set_verify_with_key_id_hmac_sha256() {
   let key_id = key_id.unwrap();
   assert_eq!(org_key_id, key_id);
   let verification_key = SharedKey::from_base64(&alg, HMACSHA256_SECRET_KEY).unwrap();
-  let verification_res = req.verify_message_signature(&verification_key, Some(&key_id)).await;
+  let verification_res = req.verify_message_signature(&verification_key, Some(&key_id));
   assert!(verification_res.is_ok());
 
-  let verification_res = req.verify_message_signature(&verification_key, Some("NotFoundKeyId")).await;
+  let verification_res = req.verify_message_signature(&verification_key, Some("NotFoundKeyId"));
   assert!(verification_res.is_err());
 }
 
@@ -294,7 +292,7 @@ async fn test_get_alg_key_ids() {
   let mut signature_params = HttpSignatureParams::try_new(&build_covered_components_req()).unwrap();
   signature_params.set_key_info(&secret_key);
 
-  req.set_message_signature(signature_params, &secret_key, None).await.unwrap();
+  req.set_message_signature(signature_params, &secret_key, None).unwrap();
   let key_ids = req.get_alg_key_ids().unwrap();
   assert_eq!(key_ids.len(), 1);
   assert_eq!(key_ids[0].0.as_ref().unwrap(), &AlgorithmName::Ed25519);
@@ -329,7 +327,7 @@ async fn test_set_verify_multiple_signatures() {
     (signature_params_hmac, &secret_key_p256, Some("p256_sig")),
   ];
 
-  req.set_message_signatures(params_key_name).await.unwrap();
+  req.set_message_signatures(params_key_name).unwrap();
 
   let public_key_eddsa = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
   let public_key_p256 = PublicKey::from_pem(&AlgorithmName::EcdsaP256Sha256, P256_PUBLIC_KEY).unwrap();
@@ -341,7 +339,6 @@ async fn test_set_verify_multiple_signatures() {
       (&public_key_eddsa, Some(&key_id_eddsa)),
       (&public_key_p256, Some(&key_id_p256)),
     ])
-    .await
     .unwrap();
 
   assert!(verification_res.len() == 2 && verification_res.iter().all(|r| r.is_ok()));
@@ -437,10 +434,7 @@ async fn test_query_param_sign_verify_async() {
   let mut signature_params = HttpSignatureParams::try_new(&covered_components).unwrap();
   signature_params.set_key_info(&secret_key);
 
-  req
-    .set_message_signature(signature_params, &secret_key, Some("qp"))
-    .await
-    .unwrap();
+  req.set_message_signature(signature_params, &secret_key, Some("qp")).unwrap();
 
   assert!(
     req.headers().get("signature-input").is_some(),
@@ -449,7 +443,7 @@ async fn test_query_param_sign_verify_async() {
   assert!(req.headers().get("signature").is_some(), "signature header is missing");
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = req.verify_message_signature(&public_key, None).await;
+  let verification_res = req.verify_message_signature(&public_key, None);
   assert!(
     verification_res.is_ok(),
     "signature verification failed: {:?}",
@@ -499,9 +493,7 @@ async fn test_set_message_signature_propagates_build_error() {
   let mut signature_params = HttpSignatureParams::try_new(&covered).unwrap();
   signature_params.set_key_info(&secret_key);
 
-  let result = req
-    .set_message_signature(signature_params, &secret_key, None as Option<&str>)
-    .await;
+  let result = req.set_message_signature(signature_params, &secret_key, None as Option<&str>);
   assert!(result.is_err(), "expected Err when using `@status` on request, got Ok");
 }
 
@@ -592,7 +584,6 @@ async fn test_response_with_query_param_req_sign_verify() {
 
   res
     .set_message_signature(signature_params, &secret_key, None, Some(&req))
-    .await
     .unwrap();
 
   assert!(
@@ -609,7 +600,7 @@ async fn test_response_with_query_param_req_sign_verify() {
   );
 
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
-  let verification_res = res.verify_message_signature(&public_key, None, Some(&req)).await;
+  let verification_res = res.verify_message_signature(&public_key, None, Some(&req));
   assert!(
     verification_res.is_ok(),
     "signature verification failed: {:?}",
@@ -634,8 +625,6 @@ async fn test_response_rejects_derived_component_without_req() {
   let mut signature_params = HttpSignatureParams::try_new(&covered).unwrap();
   signature_params.set_key_info(&secret_key);
 
-  let result = res
-    .set_message_signature(signature_params, &secret_key, None, None as Option<&Request<()>>)
-    .await;
+  let result = res.set_message_signature(signature_params, &secret_key, None, None as Option<&Request<()>>);
   assert!(result.is_err(), "expected Err when using `@method` without `req` on response");
 }
