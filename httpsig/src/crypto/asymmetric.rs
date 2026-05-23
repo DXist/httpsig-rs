@@ -3,6 +3,7 @@ use crate::{
   error::{HttpSigError, HttpSigResult},
   trace::*,
 };
+use compact_str::CompactString;
 use ecdsa::{
   elliptic_curve::{PublicKey as EcPublicKey, SecretKey as EcSecretKey, sec1::ToEncodedPoint},
   signature::{DigestSigner, DigestVerifier},
@@ -81,6 +82,7 @@ impl SecretKey {
         let sk = ed25519_compact::KeyPair::from_seed(ed25519_compact::Seed::new(seed)).sk;
         Ok(Self::Ed25519(sk))
       }
+      AlgorithmName::HmacSha256 => Err(HttpSigError::InvalidAlgorithmName("HmacSha256".into())),
       #[cfg(feature = "rsa-signature")]
       AlgorithmName::RsaV1_5Sha256 => {
         debug!("Read RSA private key");
@@ -102,8 +104,7 @@ impl SecretKey {
   pub fn from_der(alg: &AlgorithmName, der: &[u8]) -> HttpSigResult<Self> {
     use compact_str::ToCompactString;
 
-    let pki = PrivateKeyInfo::from_der(der)
-      .map_err(|e| HttpSigError::ParsePrivateKeyError(e.to_string().into()))?;
+    let pki = PrivateKeyInfo::from_der(der).map_err(|e| HttpSigError::ParsePrivateKeyError(e.to_string().into()))?;
 
     let sk_bytes = match pki.algorithm.oid.to_compact_string().as_ref() {
       // ec
@@ -213,7 +214,7 @@ impl super::SigningKey for SecretKey {
     }
   }
 
-  fn key_id(&self) -> String {
+  fn key_id(&self) -> CompactString {
     use super::VerifyingKey;
     self.public_key().key_id()
   }
@@ -235,7 +236,7 @@ impl super::VerifyingKey for SecretKey {
     self.public_key().verify(data, signature)
   }
 
-  fn key_id(&self) -> String {
+  fn key_id(&self) -> CompactString {
     self.public_key().key_id()
   }
 
@@ -282,6 +283,7 @@ impl PublicKey {
         let pk = ed25519_compact::PublicKey::from_slice(bytes).map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string()))?;
         Ok(Self::Ed25519(pk))
       }
+      AlgorithmName::HmacSha256 => Err(HttpSigError::InvalidAlgorithmName("HmacSha256".into())),
       #[cfg(feature = "rsa-signature")]
       AlgorithmName::RsaV1_5Sha256 => {
         debug!("Read RSA public key");
@@ -302,14 +304,9 @@ impl PublicKey {
   #[allow(dead_code)]
   /// Convert from pem string
   pub fn from_pem(alg: &AlgorithmName, pem: &str) -> HttpSigResult<Self> {
-<<<<<<< HEAD
-    let (tag, doc) = Document::from_pem(pem).map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string()))?;
-=======
     use compact_str::ToCompactString;
 
-    let (tag, doc) = Document::from_pem(pem)
-      .map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string().into()))?;
->>>>>>> 3ed9f4e (perf: use CompactString for often short string values)
+    let (tag, doc) = Document::from_pem(pem).map_err(|e| HttpSigError::ParsePublicKeyError(e.to_string().into()))?;
     if tag != "PUBLIC KEY" {
       return Err(HttpSigError::ParsePublicKeyError("Invalid tag".to_string()));
     };
@@ -360,6 +357,9 @@ impl PublicKey {
           .subject_public_key
           .as_bytes()
           .ok_or(HttpSigError::ParsePublicKeyError("Invalid public key".to_string()))?
+      }
+      oid => {
+        return Err(HttpSigError::ParsePublicKeyError(format!("Unknown algorithm oid {oid}")));
       }
     };
     Self::from_bytes(alg, pk_bytes)
@@ -418,7 +418,7 @@ impl super::VerifyingKey for PublicKey {
   /// - For ECDSA keys, use the uncompressed SEC1 encoding of the public key point as the byte representation.
   /// - For Ed25519 keys, use the raw 32-byte public key.
   /// - For RSA keys, use the DER encoding of the RSAPublicKey structure in PKCS#1 format.
-  fn key_id(&self) -> String {
+  fn key_id(&self) -> CompactString {
     use base64::{Engine as _, engine::general_purpose};
 
     let bytes = match self {
@@ -441,7 +441,7 @@ impl super::VerifyingKey for PublicKey {
     let mut hasher = <Sha256 as Digest>::new();
     hasher.update(&bytes);
     let hash = hasher.finalize();
-    general_purpose::STANDARD.encode(hash)
+    general_purpose::STANDARD.encode(hash).into()
   }
 
   /// Get the algorithm name

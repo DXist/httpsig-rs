@@ -4,7 +4,7 @@ use crate::{
   trace::*,
 };
 use base64::{Engine as _, engine::general_purpose};
-use compact_str::ToCompactString;
+use compact_str::{CompactString, ToCompactString};
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
 
@@ -44,7 +44,7 @@ impl super::SigningKey for SharedKey {
     }
   }
   /// Get the key id
-  fn key_id(&self) -> String {
+  fn key_id(&self) -> CompactString {
     use super::VerifyingKey;
     <Self as VerifyingKey>::key_id(self)
   }
@@ -70,13 +70,13 @@ impl super::VerifyingKey for SharedKey {
   }
 
   /// Get the key id
-  fn key_id(&self) -> String {
+  fn key_id(&self) -> CompactString {
     match self {
       SharedKey::HmacSha256(key) => {
         let mut hasher = <Sha256 as Digest>::new();
         hasher.update(key);
         let hash = hasher.finalize();
-        general_purpose::STANDARD.encode(hash)
+        general_purpose::STANDARD.encode(hash).into()
       }
     }
   }

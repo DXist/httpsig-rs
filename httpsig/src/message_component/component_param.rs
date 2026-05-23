@@ -24,7 +24,7 @@ pub enum HttpMessageComponentParam {
   Req,
   // name: https://datatracker.ietf.org/doc/html/rfc9421#name-query-parameters
   /// This will be encoded to `;name="..."` in the signature input
-  Name(String),
+  Name(CompactString),
 }
 
 impl fmt::Display for HttpMessageComponentParam {

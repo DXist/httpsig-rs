@@ -1,4 +1,6 @@
 use crate::error::{HyperSigError, HyperSigResult};
+
+use compact_str::{CompactString, ToCompactString, format_compact};
 use http::{HeaderMap, Request, Response};
 use http_body::Body;
 use httpsig::prelude::{
@@ -12,9 +14,9 @@ use indexmap::IndexMap;
 use std::str::FromStr;
 
 /// A type alias for the signature name
-type SignatureName = String;
+type SignatureName = CompactString;
 /// A type alias for the key id in base 64
-type KeyId = String;
+type KeyId = CompactString;
 
 /* --------------------------------------- */
 /// A trait about the http message signature common to both request and response
@@ -481,7 +483,7 @@ fn extract_signatures_inner<M: HttpMessage, B>(
 
 /// Verify multiple signatures inner function
 fn verify_message_signatures_inner<V, K>(
-  map_signature_with_base: &IndexMap<String, (HttpSignatureBase, HttpSignature)>,
+  map_signature_with_base: &IndexMap<SignatureName, (HttpSignatureBase, HttpSignature)>,
   key_and_id: &[(V, Option<&str>)],
 ) -> Vec<HyperSigResult<SignatureName>>
 where
@@ -704,9 +706,9 @@ fn extract_http_field<M: HttpMessage>(req_or_res: &M, id: &HttpMessageComponentI
   let headers = req_or_res.message_headers();
 
   let field_values = headers
-    .get_all(header_name)
+    .get_all(header_name.as_str())
     .iter()
-    .map(|v| v.to_str().map(|s| s.to_owned()))
+    .map(|v| v.to_str().map(|s| s.to_compact_string()))
     .collect::<Result<Vec<_>, _>>()?;
 
   HttpMessageComponent::try_from((id, field_values)).map_err(|e| e.into())
@@ -743,59 +745,63 @@ fn extract_derived_component<M: HttpMessage>(
 
   req_or_res.on_message_derived_component(derived_name, id)?;
 
-  let field_values: Vec<String> = match derived_name {
-    DerivedComponentName::Method => vec![req_or_res.message_method()?.as_str().to_string()],
-    DerivedComponentName::TargetUri => vec![req_or_res.message_uri()?.to_string()],
+  let field_values: Vec<CompactString> = match derived_name {
+    DerivedComponentName::Method => vec![req_or_res.message_method()?.as_str().to_compact_string()],
+    DerivedComponentName::TargetUri => vec![req_or_res.message_uri()?.to_compact_string()],
     DerivedComponentName::Authority => vec![
       req_or_res
         .message_uri()?
         .authority()
-        .map(|s| s.to_string())
-        .unwrap_or("".to_string()),
+        .map(|s| s.to_compact_string())
+        .unwrap_or("".to_compact_string()),
     ],
-    DerivedComponentName::Scheme => vec![req_or_res.message_uri()?.scheme_str().unwrap_or("").to_string()],
+    DerivedComponentName::Scheme => vec![req_or_res.message_uri()?.scheme_str().unwrap_or("").to_compact_string()],
     DerivedComponentName::RequestTarget => match *req_or_res.message_method()? {
       http::Method::CONNECT => vec![
         req_or_res
           .message_uri()?
           .authority()
-          .map(|s| s.to_string())
-          .unwrap_or("".to_string()),
+          .map(|s| s.to_compact_string())
+          .unwrap_or("".to_compact_string()),
       ],
-      http::Method::OPTIONS => vec!["*".to_string()],
+      http::Method::OPTIONS => vec!["*".to_compact_string()],
       _ => vec![
         req_or_res
           .message_uri()?
           .path_and_query()
-          .map(|s| s.to_string())
-          .unwrap_or("".to_string()),
+          .map(|s| s.to_compact_string())
+          .unwrap_or("".to_compact_string()),
       ],
     },
     DerivedComponentName::Path => vec![{
       let p = req_or_res.message_uri()?.path();
-      if p.is_empty() { "/".to_string() } else { p.to_string() }
+      if p.is_empty() {
+        "/".to_compact_string()
+      } else {
+        p.to_compact_string()
+      }
     }],
     DerivedComponentName::Query => vec![
       req_or_res
         .message_uri()?
         .query()
-        .map(|v| format!("?{v}"))
-        .unwrap_or("?".to_string()),
+        .map(|v| format_compact!("?{v}"))
+        .unwrap_or("?".to_compact_string()),
     ],
     DerivedComponentName::QueryParam => {
       let query = req_or_res.message_uri()?.query().unwrap_or("");
       query
         .split('&')
         .filter(|s| !s.is_empty())
-        .map(|s| s.to_string())
+        .map(|s| s.to_compact_string())
         .collect::<Vec<_>>()
     }
-    DerivedComponentName::Status => vec![req_or_res.message_status()?.as_str().to_string()],
+    DerivedComponentName::Status => vec![req_or_res.message_status()?.as_str().to_compact_string()],
     DerivedComponentName::SignatureParams => req_or_res
       .message_headers()
       .get_all("signature-input")
       .iter()
-      .map(|v| v.to_str().unwrap_or("").to_string())
+      .map(|v| v.to_str().unwrap_or("").to_compact_string())
       .collect::<Vec<_>>(),
   };
 

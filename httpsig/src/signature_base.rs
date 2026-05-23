@@ -1,4 +1,4 @@
-use std::fmt::{self, Display, Write as _};
+use std::fmt::{self, Write as _};
 use std::io::Write as _;
 
 use base64::{Engine as _, engine::general_purpose};
@@ -21,8 +21,6 @@ pub type HttpSignatureHeadersMap = IndexMap<CompactString, HttpSignatureHeaders,
 #[derive(Debug, Clone)]
 /// Signature Headers derived from HttpSignatureBase
 pub struct HttpSignatureHeaders {
-  /// signature name coupling signature with signature input
-  signature_name: CompactString,
   /// Signature value of "Signature" http header in the form of "<signature_name>=:<base64_signature>:"
   signature: HttpSignature,
   /// signature-params value of "Signature-Input" http header in the form of "<signature_name>=:<signature_params>:"

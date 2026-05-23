@@ -102,9 +102,11 @@ impl HttpSignatureParams {
     let mut buf = CompactString::with_capacity(BUF_SIZE);
     // SAFETY: base64 encoding is valid UTF-8 encoding
     unsafe {
-      general_purpose::STANDARD
+      buf.set_len(BUF_SIZE);
+      let encoded = general_purpose::STANDARD
         .encode_slice(nonce, buf.as_bytes_mut())
-        .expect("fits in the buffer")
+        .expect("fits in the buffer");
+      buf.set_len(encoded);
     };
     self.nonce = Some(buf);
     self

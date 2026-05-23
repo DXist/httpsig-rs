@@ -49,10 +49,7 @@ impl TryFrom<(&HttpMessageComponentId, Vec<CompactString>)> for HttpMessageCompo
   type Error = HttpSigError;
 
   /// Build http message component from given id and its associated field values
-  fn try_from((id, field_values): (&HttpMessageComponentId, Vec<String>)) -> Result<Self, Self::Error> {
-  fn try_from(
-    (id, field_values): (&HttpMessageComponentId, Vec<CompactString>),
-  ) -> Result<Self, Self::Error> {
+  fn try_from((id, field_values): (&HttpMessageComponentId, Vec<CompactString>)) -> Result<Self, Self::Error> {
     match &id.name {
       HttpMessageComponentName::HttpField(_) => build_http_field_component(id, field_values),
       HttpMessageComponentName::Derived(_) => build_derived_component(id, field_values),
@@ -343,9 +340,7 @@ mod tests {
     assert_eq!(component.id, id);
     assert_eq!(
       component.value,
-      HttpMessageComponentValue::from(
-        "application/json, application/json-patch+json".to_compact_string()
-      )
+      HttpMessageComponentValue::from("application/json, application/json-patch+json".to_compact_string())
     );
     assert_eq!(
       component.to_string(),
@@ -363,9 +358,7 @@ mod tests {
     assert_eq!(component.id, id);
     assert_eq!(
       component.value,
-      HttpMessageComponentValue::from(
-        "application/json;patched=true, application/json-patch+json;patched".to_compact_string()
-      )
+      HttpMessageComponentValue::from("application/json;patched=true, application/json-patch+json;patched".to_compact_string())
     );
     assert_eq!(
       component.to_string(),
@@ -382,10 +375,7 @@ mod tests {
       component.value,
       HttpMessageComponentValue::from("12345678".to_compact_string())
     );
-    assert_eq!(
-      component.to_string(),
-      "\"example-header\";key=\"patched\": 12345678"
-    );
+    assert_eq!(component.to_string(), "\"example-header\";key=\"patched\": 12345678");
   }
   #[test]
   fn test_build_http_field_component_key_multiple_values() {
@@ -413,10 +403,7 @@ mod tests {
     let field_values = vec!["GET".to_compact_string()];
     let component = build_derived_component(&id, field_values).unwrap();
     assert_eq!(component.id, id);
-    assert_eq!(
-      component.value,
-      HttpMessageComponentValue::from("GET".to_compact_string())
-    );
+    assert_eq!(component.value, HttpMessageComponentValue::from("GET".to_compact_string()));
     assert_eq!(component.to_string(), "\"@method\": GET");
 
     let id = HttpMessageComponentId::try_from("@target-uri").unwrap();
@@ -433,18 +420,12 @@ mod tests {
   fn test_build_http_field_component_query_param() {
     let id = HttpMessageComponentId::try_from("\"@query-param\";name=\"var\"").unwrap();
     let query_param = "var=this%20is%20a%20big%0Amultiline%20value&bar=with+plus+whitespace&fa%C3%A7ade%22%3A%20=something&ok";
-    let field_values = query_param.split('&').map(|v| v.to_owned()).collect::<Vec<_>>();
-    let field_values = query_param
-      .split('&')
-      .map(|v| v.to_compact_string())
-      .collect::<Vec<_>>();
+    let field_values = query_param.split('&').map(|v| v.to_compact_string()).collect::<Vec<_>>();
     let component = build_derived_component(&id, field_values).unwrap();
     assert_eq!(component.id, id);
     assert_eq!(
       component.value,
-      HttpMessageComponentValue::from(
-        "this%20is%20a%20big%0Amultiline%20value".to_compact_string()
-      )
+      HttpMessageComponentValue::from("this%20is%20a%20big%0Amultiline%20value".to_compact_string())
     );
     assert_eq!(
       component.to_string(),

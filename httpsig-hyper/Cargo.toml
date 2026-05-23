@@ -20,6 +20,7 @@ rsa-signature = ["httpsig/rsa-signature"]
 [dependencies]
 httpsig = { path = "../httpsig", version = "0.0.24" }
 
+compact_str = "0.9"
 thiserror = { version = "2.0.18" }
 tracing = { version = "0.1.44" }
 indexmap = { version = "2.11.4" }

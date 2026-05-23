@@ -1,9 +1,10 @@
+use compact_str::CompactString;
 use http::{Request, Response};
 use http_body_util::Full;
 use httpsig_hyper::{prelude::*, *};
 
 type BoxBody = http_body_util::combinators::BoxBody<bytes::Bytes, HyperDigestError>;
-type SignatureName = String;
+type SignatureName = CompactString;
 
 const EDDSA_SECRET_KEY: &str = r##"-----BEGIN PRIVATE KEY-----
 MC4CAQAwBQYDK2VwBCIEIDSHAE++q1BP7T8tk+mJtS+hLf81B0o6CFyWgucDFN/C

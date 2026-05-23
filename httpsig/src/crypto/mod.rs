@@ -4,7 +4,7 @@ mod symmetric;
 use crate::error::{HttpSigError, HttpSigResult};
 
 pub use asymmetric::{PublicKey, SecretKey};
-use compact_str::ToCompactString;
+use compact_str::{CompactString, ToCompactString};
 pub use symmetric::SharedKey;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -62,13 +62,13 @@ impl core::str::FromStr for AlgorithmName {
 /// SigningKey trait
 pub trait SigningKey {
   fn sign(&self, data: &[u8]) -> HttpSigResult<Vec<u8>>;
-  fn key_id(&self) -> String;
+  fn key_id(&self) -> CompactString;
   fn alg(&self) -> AlgorithmName;
 }
 
 /// VerifyingKey trait
 pub trait VerifyingKey {
   fn verify(&self, data: &[u8], signature: &[u8]) -> HttpSigResult<()>;
-  fn key_id(&self) -> String;
+  fn key_id(&self) -> CompactString;
   fn alg(&self) -> AlgorithmName;
 }
