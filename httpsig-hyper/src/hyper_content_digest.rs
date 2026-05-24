@@ -116,7 +116,7 @@ where
     let (body_bytes, digest) = body
       .into_bytes_with_digest(cd_type)
       .await
-      .map_err(|_e| HyperDigestError::HttpBodyError("Failed to generate digest".to_string()))?;
+      .map_err(|_e| HyperDigestError::HttpBodyError("Failed to generate digest"))?;
     let new_body = Full::new(body_bytes).map_err(|never| match never {}).boxed();
 
     parts
@@ -139,7 +139,7 @@ where
     let body_bytes = body
       .into_bytes()
       .await
-      .map_err(|_e| HyperDigestError::HttpBodyError("Failed to get body bytes".to_string()))?;
+      .map_err(|_e| HyperDigestError::HttpBodyError("Failed to get body bytes"))?;
     let digest = derive_digest(&body_bytes, &cd_type);
 
     // Use constant time equality check to prevent timing attacks
@@ -148,9 +148,7 @@ where
       let res = Request::from_parts(header, new_body);
       Ok(res)
     } else {
-      Err(HyperDigestError::InvalidContentDigest(
-        "Content-Digest verification failed".to_string(),
-      ))
+      Err(HyperDigestError::InvalidContentDigest("Content-Digest verification failed"))
     }
   }
 }
@@ -171,7 +169,7 @@ where
     let (body_bytes, digest) = body
       .into_bytes_with_digest(cd_type)
       .await
-      .map_err(|_e| HyperDigestError::HttpBodyError("Failed to generate digest".to_string()))?;
+      .map_err(|_e| HyperDigestError::HttpBodyError("Failed to generate digest"))?;
     let new_body = Full::new(body_bytes).map_err(|never| match never {}).boxed();
 
     parts
@@ -191,7 +189,7 @@ where
     let body_bytes = body
       .into_bytes()
       .await
-      .map_err(|_e| HyperDigestError::HttpBodyError("Failed to get body bytes".to_string()))?;
+      .map_err(|_e| HyperDigestError::HttpBodyError("Failed to get body bytes"))?;
     let digest = derive_digest(&body_bytes, &cd_type);
 
     // Use constant time equality check to prevent timing attacks
@@ -200,9 +198,7 @@ where
       let res = Response::from_parts(header, new_body);
       Ok(res)
     } else {
-      Err(HyperDigestError::InvalidContentDigest(
-        "Content-Digest verification failed".to_string(),
-      ))
+      Err(HyperDigestError::InvalidContentDigest("Content-Digest verification failed"))
     }
   }
 }
@@ -220,19 +216,19 @@ fn is_equal_digest(digest1: &[u8], digest2: &[u8]) -> bool {
 async fn extract_content_digest(header_map: &http::HeaderMap) -> HyperDigestResult<(ContentDigestType, Vec<u8>)> {
   let content_digest_header = header_map
     .get(CONTENT_DIGEST_HEADER)
-    .ok_or(HyperDigestError::NoDigestHeader("No content-digest header".to_string()))?
+    .ok_or(HyperDigestError::NoDigestHeader("No content-digest header"))?
     .to_str()?;
   let indexmap = sfv::Parser::new(content_digest_header)
     .parse::<sfv::Dictionary>()
-    .map_err(|e| HyperDigestError::InvalidHeaderValue(e.to_string()))?;
+    .map_err(|e| HyperDigestError::InvalidHeaderValue(e.to_string().into()))?;
   if indexmap.len() != 1 {
     return Err(HyperDigestError::InvalidHeaderValue(
-      "Content-Digest header should have only one value".to_string(),
+      "Content-Digest header should have only one value".into(),
     ));
   };
-  let (cd_type, cd) = indexmap.iter().next().unwrap();
+  let (cd_type, cd) = indexmap.into_iter().next().unwrap();
   let cd_type = ContentDigestType::from_str(cd_type.as_str())
-    .map_err(|e| HyperDigestError::InvalidHeaderValue(format!("Invalid Content-Digest type: {e}")))?;
+    .map_err(|e| HyperDigestError::InvalidHeaderValue(format!("Invalid Content-Digest type: {e}").into()))?;
   if !matches!(
     cd,
     sfv::ListEntry::Item(sfv::Item {
@@ -240,9 +236,7 @@ async fn extract_content_digest(header_map: &http::HeaderMap) -> HyperDigestResu
       ..
     })
   ) {
-    return Err(HyperDigestError::InvalidHeaderValue(
-      "Invalid Content-Digest value".to_string(),
-    ));
+    return Err(HyperDigestError::InvalidHeaderValue("Invalid Content-Digest value".into()));
   }
 
   let cd = match cd {

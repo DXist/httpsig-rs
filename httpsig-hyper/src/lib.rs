@@ -43,11 +43,12 @@ impl std::str::FromStr for ContentDigestType {
     match s {
       "sha-256" => Ok(ContentDigestType::Sha256),
       "sha-512" => Ok(ContentDigestType::Sha512),
-      _ => Err(error::HyperDigestError::InvalidContentDigestType(s.to_string())),
+      _ => Err(error::HyperDigestError::InvalidContentDigestType(s.to_compact_string())),
     }
   }
 }
 
+use compact_str::ToCompactString;
 pub use error::{HyperDigestError, HyperDigestResult, HyperSigError, HyperSigResult};
 pub use httpsig::prelude;
 pub use hyper_content_digest::{ContentDigest, RequestContentDigest, ResponseContentDigest};

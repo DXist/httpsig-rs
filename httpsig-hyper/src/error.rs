@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use compact_str::CompactString;
 use httpsig::prelude::HttpSigError;
 use thiserror::Error;
 
@@ -46,15 +47,15 @@ pub type HyperDigestResult<T> = std::result::Result<T, HyperDigestError>;
 pub enum HyperDigestError {
   /// Http body error
   #[error("Http body error: {0}")]
-  HttpBodyError(String),
+  HttpBodyError(&'static str),
 
   /// No content-digest header found
   #[error("No content-digest header found: {0}")]
-  NoDigestHeader(String),
+  NoDigestHeader(&'static str),
 
   /// Failed to parse header value
   #[error("Failed to parse header value: {0}")]
-  InvalidHeaderValue(String),
+  InvalidHeaderValue(Cow<'static, str>),
 
   /// Failed to parse content digest headers
   #[error("Failed to stringify content-digest header: {0}")]
@@ -62,9 +63,9 @@ pub enum HyperDigestError {
 
   /// Invalid content-digest
   #[error("Invalid content-digest: {0}")]
-  InvalidContentDigest(String),
+  InvalidContentDigest(&'static str),
 
   /// Invalid content-digest type
   #[error("Invalid content-digest type: {0}")]
-  InvalidContentDigestType(String),
+  InvalidContentDigestType(CompactString),
 }
