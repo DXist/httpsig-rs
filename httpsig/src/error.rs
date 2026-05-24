@@ -54,11 +54,11 @@ pub enum HttpSigError {
 
   /// Error in building signature base
   #[error("Failed to build signature base: {0}")]
-  BuildSignatureBaseError(String),
+  BuildSignatureBaseError(&'static str),
 
   /// Expired signature params
   #[error("Expired signature params: {0}")]
-  ExpiredSignatureParams(String),
+  ExpiredSignatureParams(&'static str),
 
   /// Invalid algorithm name
   #[error("Invalid algorithm name: {0}")]
@@ -67,5 +67,5 @@ pub enum HttpSigError {
   /* ----- Other errors ----- */
   /// NotYetImplemented
   #[error("Not yet implemented: {0}")]
-  NotYetImplemented(String),
+  NotYetImplemented(&'static str),
 }
