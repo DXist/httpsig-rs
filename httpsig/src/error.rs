@@ -15,10 +15,10 @@ pub enum HttpSigError {
   /* ----- Crypto errors ----- */
   /// Invalid private key for asymmetric algorithm
   #[error("Failed to parse private key: {0}")]
-  ParsePrivateKeyError(String),
+  ParsePrivateKeyError(Cow<'static, str>),
   /// Invalid public key for asymmetric algorithm
   #[error("Failed to parse public key: {0}")]
-  ParsePublicKeyError(String),
+  ParsePublicKeyError(Cow<'static, str>),
   /// Signature parse error
   #[error("Failed to parse signature: {0}")]
   ParseSignatureError(String),
