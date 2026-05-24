@@ -13,7 +13,7 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["digest-sha256", "digest-sha512"]
+default = []
 digest-sha256 = []
 digest-sha512 = []
 ed25519-signature = ["httpsig/ed25519-signature"]
@@ -49,12 +49,13 @@ bytes = { version = "1.11.1" }
 
 
 [dev-dependencies]
-httpsig = { path = "../httpsig", version = "0.0.24", features = [
+httpsig-hyper = { path = ".", features = [
+  "digest-sha256",
+  "key-id",
+  "pem",
   "ed25519-signature",
   "ecdsa-p256-sha256-signature",
   "hmac-sha256-signature",
-  "pem",
-  "key-id",
 ] }
 tokio = { version = "1.49.0", default-features = false, features = [
   "macros",
@@ -68,6 +69,7 @@ criterion = "0.8"
 [[bench]]
 name = "hyper"
 harness = false
+required-features = ["digest-sha256"]
 
 [[example]]
 name = "hyper-response"
