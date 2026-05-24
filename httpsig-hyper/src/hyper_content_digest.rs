@@ -121,7 +121,7 @@ where
 
     parts
       .headers
-      .insert(CONTENT_DIGEST_HEADER, format!("{cd_type}=:{digest}:").parse().unwrap());
+      .insert(CONTENT_DIGEST_HEADER, format!("{cd_type}=:{digest}:").try_into().unwrap());
 
     let new_req = Request::from_parts(parts, new_body);
     Ok(new_req)
@@ -176,7 +176,7 @@ where
 
     parts
       .headers
-      .insert(CONTENT_DIGEST_HEADER, format!("{cd_type}=:{digest}:").parse().unwrap());
+      .insert(CONTENT_DIGEST_HEADER, format!("{cd_type}=:{digest}:").try_into().unwrap());
 
     let new_req = Response::from_parts(parts, new_body);
     Ok(new_req)
