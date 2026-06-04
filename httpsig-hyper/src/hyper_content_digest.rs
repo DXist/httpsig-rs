@@ -248,7 +248,7 @@ async fn extract_content_digest(header_map: &http::HeaderMap) -> HyperDigestResu
     }) => cd,
     _ => unreachable!(),
   };
-  Ok((cd_type, cd.to_owned()))
+  Ok((cd_type, cd))
 }
 
 /* --------------------------------------- */
@@ -261,20 +261,14 @@ mod tests {
     let body = Full::new(&b"{\"hello\": \"world\"}"[..]);
     #[cfg(feature = "digest-sha256")]
     {
-      let (_body_bytes, digest) = body
-        .into_bytes_with_digest(&ContentDigestType::Sha256)
-        .await
-        .unwrap();
+      let (_body_bytes, digest) = body.into_bytes_with_digest(&ContentDigestType::Sha256).await.unwrap();
 
       assert_eq!(digest, "X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=");
     }
 
     #[cfg(feature = "digest-sha512")]
     {
-      let (_body_bytes, digest) = body
-        .into_bytes_with_digest(&ContentDigestType::Sha512)
-        .await
-        .unwrap();
+      let (_body_bytes, digest) = body.into_bytes_with_digest(&ContentDigestType::Sha512).await.unwrap();
       assert_eq!(
         digest,
         "WZDPaVn/7XgHaAy8pmojAkGWoRx2UFChF41A2svX+TaPm+AbwAgBWnrIiYllu7BNNyealdVLvRwEmTHWXvJwew=="
