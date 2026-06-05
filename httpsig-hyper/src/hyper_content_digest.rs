@@ -229,8 +229,7 @@ async fn extract_content_digest(header_map: &http::HeaderMap) -> HyperDigestResu
     ));
   };
   let (cd_type, cd) = indexmap.into_iter().next().unwrap();
-  let cd_type = ContentDigestType::from_str(cd_type.as_str())
-    .map_err(|e| HyperDigestError::InvalidHeaderValue(format!("Invalid Content-Digest type: {e}").into()))?;
+  let cd_type = ContentDigestType::from_str(cd_type.as_str())?;
   if !matches!(
     cd,
     sfv::ListEntry::Item(sfv::Item {
