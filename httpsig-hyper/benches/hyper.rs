@@ -55,12 +55,33 @@ fn sign_verify(req: &mut Request<BoxBody>, shared_key: &SharedKey, signature_par
 fn bench_sign_verify(c: &mut Criterion) {
   c.bench_function("hmac-sha256 sign-verify", |b| {
     b.iter_batched(
-      || setup_sign_verify(),
+      setup_sign_verify,
       |(mut req, shared_key, signature_params)| sign_verify(&mut req, &shared_key, signature_params),
       criterion::BatchSize::SmallInput,
     )
   });
 }
 
-criterion_group!(benches, bench_sign_verify);
+fn setup_extract_signatures() -> Request<BoxBody> {
+  let mut req = futures::executor::block_on(build_request());
+  let shared_key = SharedKey::from_base64(&AlgorithmName::HmacSha256, HMACSHA256_SECRET_KEY).unwrap();
+  let mut signature_params = HttpSignatureParams::try_new(&build_covered_components_req()).unwrap();
+  signature_params.set_key_info(&shared_key);
+  // Random nonce is highly recommended for HMAC
+  signature_params.set_random_nonce();
+  req.set_message_signature(signature_params, &shared_key, None).unwrap();
+  req
+}
+
+fn bench_extract_signatures(c: &mut Criterion) {
+  c.bench_function("extract_signatures", |b| {
+    b.iter_batched(
+      setup_extract_signatures,
+      |req| req.extract_signatures().unwrap(),
+      criterion::BatchSize::SmallInput,
+    )
+  });
+}
+
+criterion_group!(benches, bench_extract_signatures, bench_sign_verify);
 criterion_main!(benches);
