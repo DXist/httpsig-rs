@@ -89,7 +89,7 @@ async fn sender_hs256(res: &mut Response<BoxBody>, received_req: &Request<BoxBod
 /// Receiver function that verifies a request with a signature of ed25519
 async fn receiver_ed25519<B>(res: &Response<B>, sent_req: &Request<BoxBody>) -> HyperSigResult<SignatureName>
 where
-  B: http_body::Body + Send + Sync,
+  B: http_body::Body,
 {
   println!("Verifying ED25519 signature");
   let public_key = PublicKey::from_pem(&AlgorithmName::Ed25519, EDDSA_PUBLIC_KEY).unwrap();
@@ -102,7 +102,7 @@ where
 /// Receiver function that verifies a request with a signature of hmac-sha256
 async fn receiver_hmac_sha256<B>(res: &Response<B>, sent_req: &Request<BoxBody>) -> HyperSigResult<SignatureName>
 where
-  B: http_body::Body + Send + Sync,
+  B: http_body::Body,
 {
   println!("Verifying HMAC-SHA256 signature");
   let shared_key = SharedKey::from_base64(&AlgorithmName::HmacSha256, HMACSHA256_SECRET_KEY).unwrap();

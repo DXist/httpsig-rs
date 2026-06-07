@@ -190,7 +190,7 @@ pub trait MessageSignatureRes {
 /* --------------------------------------- */
 impl<D> MessageSignature for Request<D>
 where
-  D: Send + Body + Sync,
+  D: Body,
 {
   type Error = HyperSigError;
 
@@ -222,7 +222,7 @@ const NO_REQ_FOR_PARAM: Option<&Request<()>> = None;
 
 impl<D> MessageSignatureReq for Request<D>
 where
-  D: Send + Body + Sync,
+  D: Body,
 {
   type Error = HyperSigError;
 
@@ -298,7 +298,7 @@ where
 /* --------------------------------------- */
 impl<D> MessageSignature for Response<D>
 where
-  D: Send + Body + Sync,
+  D: Body,
 {
   type Error = HyperSigError;
 
@@ -324,7 +324,7 @@ where
 
 impl<D> MessageSignatureRes for Response<D>
 where
-  D: Send + Body + Sync,
+  D: Body,
 {
   type Error = HyperSigError;
 
@@ -816,9 +816,7 @@ fn extract_http_message_component<M: HttpMessage>(
 ) -> HyperSigResult<HttpMessageComponent> {
   match &target_component_id.name {
     HttpMessageComponentName::HttpField(_) => extract_http_field(req_or_res, target_component_id),
-    HttpMessageComponentName::Derived(_) => {
-      extract_derived_component(req_or_res, target_component_id)
-    }
+    HttpMessageComponentName::Derived(_) => extract_derived_component(req_or_res, target_component_id),
   }
 }
 
