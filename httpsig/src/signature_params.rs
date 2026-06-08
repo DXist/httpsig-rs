@@ -175,12 +175,7 @@ impl TryFrom<&InnerList> for HttpSignatureParams {
     let covered_components = inner_list_with_params
       .items
       .iter()
-      .map(|v| {
-        HttpMessageComponentId::try_from(v.serialize().as_str())
-        // v.serialize_value()
-        //   .map_err(|e| HttpSigError::ParseSFVError(e.to_string()))
-        //   .and_then(|v| HttpMessageComponentId::try_from(v.as_str()))
-      })
+      .map(|v| HttpMessageComponentId::try_from(v.serialize().as_str()))
       .collect::<Result<Vec<_>, _>>()?;
 
     if !has_unique_elements(covered_components.iter()) {

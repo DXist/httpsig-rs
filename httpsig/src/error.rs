@@ -7,7 +7,7 @@ use thiserror::Error;
 pub type HttpSigResult<T> = std::result::Result<T, HttpSigError>;
 
 /// Error type for http signature
-#[derive(Error, Debug)]
+#[derive(Clone, Error, Debug)]
 pub enum HttpSigError {
   #[error("Base64 decode error: {0}")]
   Base64DecodeError(#[from] base64::DecodeError),
@@ -29,7 +29,7 @@ pub enum HttpSigError {
   /* ----- Component errors ----- */
   /// Failed to parse structured field value
   #[error("Failed to parse structured field value: {0}")]
-  ParseSFVError(#[from] sfv::Error),
+  ParseSFVError(String),
   /// Invalid http message component name
   #[error("Invalid http message component name: {0}")]
   InvalidComponentName(CompactString),
@@ -68,4 +68,10 @@ pub enum HttpSigError {
   /// NotYetImplemented
   #[error("Not yet implemented: {0}")]
   NotYetImplemented(&'static str),
+}
+
+impl From<sfv::Error> for HttpSigError {
+  fn from(err: sfv::Error) -> Self {
+    Self::ParseSFVError(err.to_string())
+  }
 }

@@ -32,10 +32,6 @@ impl HttpSignatureHeaders {
   pub fn try_parse(signature_header: &str, signature_input_header: &str) -> HttpSigResult<HttpSignatureHeadersMap> {
     let signature_input: sfv::Dictionary = Parser::new(signature_input_header).parse()?;
     let mut signature: sfv::Dictionary = Parser::new(signature_header).parse()?;
-    // let signature_input =
-    //   Parser::parse_dictionary(signature_input_header.as_bytes()).map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?;
-    // let signature =
-    //   Parser::parse_dictionary(signature_header.as_bytes()).map_err(|e| HttpSigError::ParseSFVError(e.to_string()))?;
 
     if signature.len() != signature_input.len() {
       return Err(HttpSigError::BuildSignatureHeaderError(
