@@ -228,6 +228,16 @@ impl HttpSignatureBase {
     self.signature_params.nonce.as_deref()
   }
 
+  /// Get tag from signature params
+  pub fn tag(&self) -> Option<&str> {
+    self.signature_params.tag.as_deref()
+  }
+
+  /// Get created from signature params
+  pub fn created(&self) -> Option<u64> {
+    self.signature_params.created
+  }
+
   /// Get covered components from signature params
   pub fn covered_components(&self) -> &[HttpMessageComponentId] {
     &self.signature_params.covered_components
