@@ -140,6 +140,7 @@ impl AsRef<HttpSignature> for HttpSignature {
 
 /// Signature Base
 /// https://datatracker.ietf.org/doc/html/rfc9421#section-2.5
+#[derive(Debug, Clone)]
 pub struct HttpSignatureBase {
   /// HTTP message field and derived components ordered as in the vector in signature params
   component_lines: Vec<HttpMessageComponent>,
