@@ -42,20 +42,20 @@ pub trait ContentDigest: http_body::Body {
 }
 
 /// Returns the digest of the given body in Vec<u8>
-fn derive_digest(body_bytes: &Bytes, cd_type: &ContentDigestType) -> Vec<u8> {
+fn derive_digest(body_bytes: &Bytes, cd_type: &ContentDigestType) -> Box<[u8]> {
   match cd_type {
     #[cfg(feature = "digest-sha256")]
     ContentDigestType::Sha256 => {
       let mut hasher = sha2::Sha256::new();
       hasher.update(body_bytes);
-      hasher.finalize().to_vec()
+      hasher.finalize().to_vec().into()
     }
 
     #[cfg(feature = "digest-sha512")]
     ContentDigestType::Sha512 => {
       let mut hasher = sha2::Sha512::new();
       hasher.update(body_bytes);
-      hasher.finalize().to_vec()
+      hasher.finalize().to_vec().into()
     }
   }
 }
@@ -78,6 +78,13 @@ pub trait RequestContentDigest {
 
   /// Verify the content digest in the request and returns self if it's valid otherwise returns error
   fn verify_content_digest(self) -> impl Future<Output = Result<Self::PassthroughRequest, Self::Error>> + Send
+  where
+    Self: Sized;
+
+  /// Verify the content digest in the request and returns `(self, digest_bytes)` if it's valid otherwise returns error
+  fn verify_and_get_content_digest(
+    self,
+  ) -> impl Future<Output = Result<(Self::PassthroughRequest, Box<[u8]>), Self::Error>> + Send
   where
     Self: Sized;
 }
@@ -135,6 +142,15 @@ where
   where
     Self: Sized,
   {
+    self.verify_and_get_content_digest().await.map(|(req, _)| req)
+  }
+  /// Verifies the consistency between self and given content-digest in &[u8]
+  /// Returns self in Bytes if it's valid and content digest boxed bytes.
+  /// Otherwise returns error.
+  async fn verify_and_get_content_digest(self) -> Result<(Self::PassthroughRequest, Box<[u8]>), Self::Error>
+  where
+    Self: Sized,
+  {
     let header_map = self.headers();
     let (cd_type, expected_digest) = extract_content_digest(header_map).await?;
     let (header, body) = self.into_parts();
@@ -148,7 +164,7 @@ where
     if is_equal_digest(&digest, &expected_digest) {
       let new_body = Full::new(body_bytes).map_err(|never| match never {}).boxed();
       let res = Request::from_parts(header, new_body);
-      Ok(res)
+      Ok((res, digest))
     } else {
       Err(HyperDigestError::InvalidContentDigest("Content-Digest verification failed"))
     }
