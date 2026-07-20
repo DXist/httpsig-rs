@@ -1,7 +1,7 @@
 use crate::error::{HyperSigError, HyperSigResult};
 
 use compact_str::{CompactString, ToCompactString, format_compact};
-use http::{HeaderMap, Request, Response};
+use http::{HeaderMap, Request, Response, header::HOST, uri::Authority};
 use http_body::Body;
 use httpsig::prelude::{
   AlgorithmName, HttpSignature, HttpSignatureBase, HttpSignatureBaseOperator, HttpSignatureHeaders, HttpSignatureHeadersMap,
@@ -11,7 +11,7 @@ use httpsig::prelude::{
   },
 };
 use indexmap::IndexMap;
-use std::str::FromStr;
+use std::{borrow::Cow, str::FromStr};
 
 /// A type alias for the signature name
 type SignatureName = CompactString;
@@ -526,6 +526,8 @@ where
 trait HttpMessage {
   fn message_method(&self) -> HyperSigResult<&http::Method>;
   fn message_uri(&self) -> HyperSigResult<&http::Uri>;
+  /// Return normalized authority with lowercase hostname.
+  fn message_normalized_authority(&self) -> HyperSigResult<CompactString>;
   fn message_headers(&self) -> &HeaderMap;
   fn message_status(&self) -> HyperSigResult<http::StatusCode>;
   /// Validation callback for HTTP Message, containing a component with `req` param.
@@ -547,6 +549,39 @@ impl<B> HttpMessage for Request<B> {
 
   fn message_uri(&self) -> HyperSigResult<&http::Uri> {
     Ok(self.uri())
+  }
+  fn message_normalized_authority(&self) -> HyperSigResult<CompactString> {
+    let authority = if let Some(authority) = self.uri().authority() {
+      Cow::Borrowed(authority)
+    } else {
+      let raw_authority = self
+        .headers()
+        .get(HOST)
+        .ok_or_else(|| HyperSigError::InvalidHeaderValue)
+        .and_then(|h| h.to_str().map_err(|_| HyperSigError::InvalidHeaderValue))?;
+      Cow::Owned(
+        raw_authority
+          .parse::<Authority>()
+          .map_err(|_| HyperSigError::InvalidHeaderValue)?,
+      )
+    };
+    let host = authority.host();
+
+    // Reject non-ASCII strings to remain safe without a Punycode library
+    if !host.is_ascii() {
+      return Err(HyperSigError::InvalidHeaderValue);
+    }
+    let mut normalized_authority = CompactString::from(host);
+    normalized_authority.make_ascii_lowercase();
+
+    // 4. Handle default port stripping as mandated by RFC 9421
+    Ok(if let Some(port) = authority.port() {
+      let port_u16 = port.as_u16();
+      // Only append the port if it is non-standard (e.g., :8080)
+      format_compact!("{normalized_authority}:{port_u16}")
+    } else {
+      normalized_authority
+    })
   }
 
   fn message_headers(&self) -> &HeaderMap {
@@ -585,6 +620,10 @@ impl<B> HttpMessage for Response<B> {
 
   fn message_uri(&self) -> HyperSigResult<&http::Uri> {
     Err(HyperSigError::InvalidComponentName("`uri` is only for request".into()))
+  }
+
+  fn message_normalized_authority(&self) -> HyperSigResult<CompactString> {
+    Err(HyperSigError::InvalidComponentName("`authority` is only for request".into()))
   }
 
   fn message_headers(&self) -> &HeaderMap {
@@ -748,22 +787,10 @@ fn extract_derived_component<M: HttpMessage>(
   let field_values: Vec<CompactString> = match derived_name {
     DerivedComponentName::Method => vec![req_or_res.message_method()?.as_str().to_compact_string()],
     DerivedComponentName::TargetUri => vec![req_or_res.message_uri()?.to_compact_string()],
-    DerivedComponentName::Authority => vec![
-      req_or_res
-        .message_uri()?
-        .authority()
-        .map(|s| s.to_compact_string())
-        .unwrap_or("".to_compact_string()),
-    ],
+    DerivedComponentName::Authority => vec![req_or_res.message_normalized_authority()?],
     DerivedComponentName::Scheme => vec![req_or_res.message_uri()?.scheme_str().unwrap_or("").to_compact_string()],
     DerivedComponentName::RequestTarget => match *req_or_res.message_method()? {
-      http::Method::CONNECT => vec![
-        req_or_res
-          .message_uri()?
-          .authority()
-          .map(|s| s.to_compact_string())
-          .unwrap_or("".to_compact_string()),
-      ],
+      http::Method::CONNECT => vec![req_or_res.message_normalized_authority()?],
       http::Method::OPTIONS => vec!["*".to_compact_string()],
       _ => vec![
         req_or_res
