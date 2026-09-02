@@ -4,8 +4,8 @@ use compact_str::{CompactString, ToCompactString, format_compact};
 use http::{HeaderMap, Request, Response, header::HOST, uri::Authority};
 use http_body::Body;
 use httpsig::prelude::{
-  AlgorithmName, HttpSignature, HttpSignatureBase, HttpSignatureBaseOperator, HttpSignatureHeaders, HttpSignatureHeadersMap,
-  HttpSignatureParams, SigningKey, VerifyingKey,
+  AlgorithmName, HttpSigError, HttpSignature, HttpSignatureBase, HttpSignatureBaseOperator, HttpSignatureHeaders,
+  HttpSignatureHeadersMap, HttpSignatureParams, SigningKey, VerifyingKey,
   message_component::{
     DerivedComponentName, HttpMessageComponent, HttpMessageComponentId, HttpMessageComponentName, HttpMessageComponentParam,
   },
@@ -556,19 +556,24 @@ impl<B> HttpMessage for Request<B> {
       let raw_authority = self
         .headers()
         .get(HOST)
-        .ok_or_else(|| HyperSigError::InvalidHeaderValue)
-        .and_then(|h| h.to_str().map_err(|_| HyperSigError::InvalidHeaderValue))?;
+        .ok_or_else(|| HttpSigError::InvalidComponent("@authority: missing host header".into()))
+        .and_then(|h| {
+          h.to_str()
+            .map_err(|_| HttpSigError::InvalidComponent("@authority: not ASCII visible chars".into()))
+        })?;
       Cow::Owned(
         raw_authority
           .parse::<Authority>()
-          .map_err(|_| HyperSigError::InvalidHeaderValue)?,
+          .map_err(|err| HttpSigError::InvalidComponent(format!("@authority: {err}").into()))?,
       )
     };
     let host = authority.host();
 
     // Reject non-ASCII strings to remain safe without a Punycode library
     if !host.is_ascii() {
-      return Err(HyperSigError::InvalidHeaderValue);
+      return Err(HyperSigError::HttpSigError(HttpSigError::InvalidComponent(
+        "@authority: non-ASCII is not supported".into(),
+      )));
     }
     let mut normalized_authority = CompactString::from(host);
     normalized_authority.make_ascii_lowercase();
