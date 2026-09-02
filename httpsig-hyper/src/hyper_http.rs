@@ -463,22 +463,21 @@ fn get_signature_params_inner<M: HttpMessage>(req_or_res: &M) -> HyperSigResult<
   Ok(res)
 }
 
-/// extract signatures inner function
+/// Extract signatures inner function.
+///
+/// Fail if any signature base input is not well-formed and signature base can't be constructed.
 fn extract_signatures_inner<M: HttpMessage, B>(
   req_or_res: &M,
   req_for_param: Option<&Request<B>>,
 ) -> HyperSigResult<IndexMap<SignatureName, (HttpSignatureBase, HttpSignature)>> {
   let signature_headers_map = extract_signature_headers_with_name(req_or_res)?;
-  let extracted = signature_headers_map
+  signature_headers_map
     .into_iter()
-    .filter_map(|(name, headers)| {
+    .map(|(name, headers)| {
       let (signature, params) = headers.into_signature_and_params();
-      build_signature_base(req_or_res, params, req_for_param)
-        .ok()
-        .map(|base| (name, (base, signature)))
+      build_signature_base(req_or_res, params, req_for_param).map(|base| (name, (base, signature)))
     })
-    .collect();
-  Ok(extracted)
+    .collect()
 }
 
 /// Verify multiple signatures inner function
